@@ -60,7 +60,8 @@ def community_simulations_fixed_std(std):
     return community_dynamics_invasibility
         
 community_dynamics_invasibility_01 = community_simulations_fixed_std(0.1)
-pickle_dump('community_dynamics_invasibility_011_01.pkl',community_dynamics_invasibility_01)        
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_2.pkl",
+            community_dynamics_invasibility_01)        
         
 community_dynamics_invasibility_005 = community_simulations_fixed_std(0.05)
 pickle_dump('community_dynamics_invasibility_011_005.pkl',community_dynamics_invasibility_005)        

@@ -37,6 +37,10 @@ from matplotlib import pyplot as plt
 
 import pickle
 
+import itertools
+
+import pandas as pd
+
 ########################################
 
 ################ Classes ########################
@@ -789,6 +793,7 @@ class community(community_parameters):
        # Number of unique species compositions per species pool
        #    (This initialisation is unnecessary and un-pythonic, but I like to do it for readability.)
        self.no_unique_compositions = None
+       self.unique_composition_label = {}
        
        # Species composition (species presence/absence) at the end of simulation
        self.final_composition = {}
@@ -912,7 +917,10 @@ class community(community_parameters):
                self.assign_gLV_attributes(gLV_res, lineage)
        
        # Calculate the number of unique species compositions for the species pool
-       self.no_unique_compositions = self.unique_compositions()
+       no_uniq_compositions, comps = self.unique_compositions()
+       
+       self.no_unique_compositions = no_uniq_compositions
+       self.unique_composition_label = {'lineage '+ str(lineage) : comp for lineage, comp in zip(lineages, comps)}
        
    def repeat_simulations_supply_initcond(self,lineages,t_end,array_of_init_conds,
                                           with_community_function):
@@ -970,7 +978,10 @@ class community(community_parameters):
                 self.assign_gLV_attributes(gLV_res, lineage)
             
        # Calculate the number of unique species compositions for the species pool
-       self.no_unique_compositions = self.unique_compositions()
+       no_uniq_compositions, comps = self.unique_compositions()
+       
+       self.no_unique_compositions = no_uniq_compositions
+       self.unique_composition_label = {'lineage '+ str(lineage) : comp for lineage, comp in zip(lineages, comps)}
        
    def assign_gLV_attributes(self,gLV_res,lineage):
        
@@ -1054,12 +1065,12 @@ class community(community_parameters):
        #    This is the same as identifying the number of unique species compositions 
        #    for the species pool.
        # Also label each lineage with whichever unique species composition it belongs to.
-       uniq_comp, comp_ind = np.unique(all_compositions,axis=0,return_index=True)
+       uniq_comp, comps = np.unique(all_compositions,axis=0,return_inverse=True)
        
        # Calculate the number of unique compositions.
        no_uniq_comp = len(uniq_comp)
        
-       return [no_uniq_comp, comp_ind]
+       return [no_uniq_comp, comps]
     
    def calculate_lyapunov_exponents(self,
                                     lineages,
@@ -1532,8 +1543,8 @@ def find_normalised_peaks(data):
         prominences = peak_prominences(data, peak_ind)[0]
         # get peak prominances relative to the data.
         normalised_prominences = prominences/(data[peak_ind] - prominences)
-        # select peaks from normalised prominances > 1
-        peak_ind = peak_ind[normalised_prominences > 1]
+        # select peaks from normalised prominences > 0.8
+        peak_ind = peak_ind[normalised_prominences > 0.8]
         
     # If peaks are present after normalisation
     if peak_ind.size > 0:
@@ -1544,6 +1555,65 @@ def find_normalised_peaks(data):
     else:
           
         return np.array([np.nan]) # return np.nan
+    
+def community_object_to_df(community_object,community_label=0,interaction_strength_mean=True,
+                           interaction_strength_std=True,no_species=True,no_unique_compositions=True,
+                           diversity=True,fluctuations=True,invasibility=True,le=False):
+    
+    no_lineages = len(community_object.ODE_sols)
+    
+    community_col = np.repeat(community_label,no_lineages)
+    
+    lineage_col = list(community_object.ODE_sols.keys())
+    lineage_col = [int(lineage.replace('lineage ','')) for lineage in lineage_col]
+    
+    ############## Repeated attributes ####################
+    
+    potential_rep_attributes = ['mu_a','sigma_a','no_species','no_unique_compositions']
+    rep_attributes_to_get = [interaction_strength_mean,interaction_strength_std,
+                             no_species,no_unique_compositions]
+    rep_attribute_names = list(itertools.compress(potential_rep_attributes,rep_attributes_to_get))
+    
+    rep_attr_cols = [np.repeat(getattr(community_object,attribute_name),no_lineages) \
+                    for attribute_name in rep_attribute_names]
+    
+    ############### Non-repeated attributes ###################
+    
+    no_rep_potential_attributes = ['unique_composition_label','diversity','fluctuations','invasibilities']
+    no_rep_attributes_to_get = [no_unique_compositions,diversity,fluctuations,
+                         invasibility]
+    no_rep_attribute_names = list(itertools.compress(no_rep_potential_attributes,no_rep_attributes_to_get))
+    
+    no_rep_attr_cols = [list(getattr(community_object, attribute_name).values()) \
+                        for attribute_name in no_rep_attribute_names]
+    
+    ################################# Combine attributes ############
+    
+    attribute_cols = [community_col] + [lineage_col] + rep_attr_cols + no_rep_attr_cols
+    
+    col_names = ['community','lineage'] + rep_attribute_names + no_rep_attribute_names
+    
+    ############## Lyapunov exponents #################
+    
+    if le is True:
+        
+        le_mean_col = [lyapunov_exponent[0] \
+                       for lyapunov_exponent in community_object.lyapunov_exponents.values()]
+        le_std_col = [lyapunov_exponent[1] \
+                       for lyapunov_exponent in community_object.lyapunov_exponents.values()]
+            
+        attribute_cols += [le_mean_col,le_std_col]
+        col_names += ['lyapunov_exponent_mean','lyapunov_exponent_std']
+        
+    ############# Convert lists to df ################
+    
+    community_df = pd.DataFrame(attribute_cols)
+    community_df = community_df.T
+    community_df = community_df.set_axis(col_names,axis=1)
+    
+    return community_df
+    
+
         
 def pickle_dump(filename,data):
     
