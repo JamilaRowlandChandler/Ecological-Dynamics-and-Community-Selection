@@ -58,18 +58,40 @@ def community_simulations_fixed_std(std):
             community_dynamics_interact_dist
             
     return community_dynamics_invasibility
-        
+
+community_dynamics_invasibility_005 = community_simulations_fixed_std(0.05)
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_2.pkl",
+            community_dynamics_invasibility_005)        
+
 community_dynamics_invasibility_01 = community_simulations_fixed_std(0.1)
 pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_2.pkl",
             community_dynamics_invasibility_01)        
         
-community_dynamics_invasibility_005 = community_simulations_fixed_std(0.05)
-pickle_dump('community_dynamics_invasibility_011_005.pkl',community_dynamics_invasibility_005)        
-
 community_dynamics_invasibility_015 = community_simulations_fixed_std(0.15)
-pickle_dump('community_dynamics_invasibility_011_015.pkl',community_dynamics_invasibility_015)        
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_015_2.pkl",
+            community_dynamics_invasibility_015)        
 
 community_dynamics_invasibility_02 = community_simulations_fixed_std(0.2)
-pickle_dump('community_dynamics_invasibility_011_02.pkl',community_dynamics_invasibility_02)        
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_02_2.pkl",
+            community_dynamics_invasibility_02)        
         
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      

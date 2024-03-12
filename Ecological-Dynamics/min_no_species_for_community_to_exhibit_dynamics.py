@@ -183,8 +183,9 @@ min_species_for_invasibility_per_dist = {(str(interact_dist['mu_a']) + str(inter
                                                      **{'interact_func_name':'random','interact_args':interact_dist}) \
                                   for interact_dist in interaction_distributions}
     
-pickle_dump('min_species_for_invasibility_per_dist.pkl',min_species_for_invasibility_per_dist )
-    
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/min_species_for_invasibility_per_dist.pkl",
+            min_species_for_invasibility_per_dist)
+
 community_column = np.zeros((len(min_species_for_invasibility_per_dist)-1)*no_lineages)
 lineage_column = np.tile(np.arange(no_lineages),len(min_species_for_invasibility_per_dist)-1)
 no_species_column = []
@@ -208,3 +209,12 @@ min_species_invasibility_df = pd.DataFrame(np.stack((np.concatenate(no_species_c
                                                      np.concatenate(diversity_column))).T,
                                            columns=['No_Species','Community','Lineage',
                                               'Invasibility','Diversity'])
+
+######################################################################
+
+
+
+
+
+
+
