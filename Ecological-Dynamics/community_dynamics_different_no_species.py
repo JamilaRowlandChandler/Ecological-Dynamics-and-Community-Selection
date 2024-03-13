@@ -328,9 +328,9 @@ plt.savefig("Figures/diversity_no_species_ecodyn.png", dpi=300, bbox_inches='tig
 sns.set_style('white')
 norm = plt.Normalize(community_dynamics_df['Le_mean'].min(),
                      community_dynamics_df['Le_mean'].max())
-s_m = plt.cm.ScalarMappable(cmap="magma_r", norm=norm)
+s_m = plt.cm.ScalarMappable(cmap="mako_r", norm=norm)
 ax = sns.scatterplot(community_dynamics_df,x='No_Species',y='Diversity',
-                hue='Le_mean',palette=sns.color_palette("magma_r",as_cmap=True))
+                hue='Le_mean',hue_norm=norm,palette="mako_r")
 plt.xlabel('Initial number of species',fontsize=14)
 plt.ylabel('Species diversity at the \n end of simulations',fontsize=14)
 ax.get_legend().remove()
@@ -339,8 +339,9 @@ clb.ax.set_title('Mean max. \n lyapunov exponent')
 plt.title('Effect of lyapunov exponents on species diversity',
           fontsize=16,pad=30)
 
-plt.savefig("Figures/diversity_no_species_le_mean.png", dpi=300, bbox_inches='tight')
-
+#plt.savefig("Figures/diversity_no_species_le_mean.png", dpi=300, bbox_inches='tight')
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/diversity_no_species_le_mean.png",
+            dpi=300, bbox_inches='tight')
 
 ###################
 

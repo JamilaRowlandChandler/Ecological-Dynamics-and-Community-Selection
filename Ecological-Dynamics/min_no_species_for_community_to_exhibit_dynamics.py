@@ -9,8 +9,11 @@ Created on Wed Feb 21 10:39:21 2024
 
 import numpy as np
 from copy import deepcopy
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 import itertools
+import pandas as pd
+import seaborn as sns
 
 from community_dynamics_and_properties_v2 import *
 
@@ -183,11 +186,26 @@ min_species_for_invasibility_per_dist = {(str(interact_dist['mu_a']) + str(inter
                                                      **{'interact_func_name':'random','interact_args':interact_dist}) \
                                   for interact_dist in interaction_distributions}
     
-pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/min_species_for_invasibility_per_dist.pkl",
-            min_species_for_invasibility_per_dist)
+############ Home ####################
+    
+#pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/min_species_for_invasibility_per_dist.pkl",
+#            min_species_for_invasibility_per_dist)
 
-community_column = np.zeros((len(min_species_for_invasibility_per_dist)-1)*no_lineages)
+
+########### Work #####################
+
+min_species_for_invasibility_per_dist = pd.read_pickle("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/min_species_for_invasibility_per_dist.pkl")
+
+#################################################
+
+community_column = np.repeat(np.arange(len(min_species_for_invasibility_per_dist)-1),no_lineages)
 lineage_column = np.tile(np.arange(no_lineages),len(min_species_for_invasibility_per_dist)-1)
+
+mu_as = np.unique([interact_dist['mu_a'] for interact_dist in interaction_distributions[1:]])
+sigma_as = np.unique([interact_dist['sigma_a'] for interact_dist in interaction_distributions[1:]])
+mu_a_column = np.repeat(mu_as,len(sigma_as)*no_lineages)[no_lineages:]
+sigma_a_column = np.tile(np.repeat(sigma_as,no_lineages),len(mu_as))[no_lineages:]
+
 no_species_column = []
 invasibility_column = []
 diversity_column = []
@@ -203,18 +221,50 @@ for community_info in min_species_for_invasibility_per_dist.values():
         diversity_column.append(list(community_extracted.diversity.values()))
         invasibility_column.append(list(community_extracted.invasibilities.values()))
 
-min_species_invasibility_df = pd.DataFrame(np.stack((np.concatenate(no_species_column),
-                                                     community_column,lineage_column,
+min_species_invasibility_df = pd.DataFrame(np.stack((community_column,lineage_column,
+                                                     mu_a_column,sigma_a_column,
+                                                     np.concatenate(no_species_column),
                                                      np.concatenate(invasibility_column),
                                                      np.concatenate(diversity_column))).T,
-                                           columns=['No_Species','Community','Lineage',
-                                              'Invasibility','Diversity'])
+                                           columns=['Community','Lineage','mu_a','sigma_a',
+                                              'No_Species','Invasibility','Diversity'])
+
+min_species_invasibility_df['No_Species'] = min_species_invasibility_df['No_Species'].astype(int)
+
+min_species_invasibility_df['Survival_Fraction'] = min_species_invasibility_df['Diversity']/min_species_invasibility_df['No_Species']
 
 ######################################################################
 
+interact_dist_no_species_comm = min_species_invasibility_df.groupby(['mu_a','sigma_a'])['No_Species'].mean()
+interact_dist_no_species_comm = interact_dist_no_species_comm.to_frame()
+interact_dist_no_species_comm.reset_index(inplace=True)
 
+pivot_interact_dist_no_species = interact_dist_no_species_comm.pivot(index='mu_a',columns='sigma_a',values='No_Species')
 
+#####
 
+fig, ax  = plt.subplots(1,1,figsize=(6,5),layout='constrained')
+fig.suptitle('Min. species pool size needed to generate "invadable" communities',
+             fontsize=14)
+fig.supxlabel('Mean interaction strength',fontsize=12)
+fig.supylabel('Std. in interaction strength',fontsize=12)
 
+cmap = mpl.cm.Blues_r
+bounds = np.arange(interact_dist_no_species_comm['No_Species'].min(),
+                   interact_dist_no_species_comm['No_Species'].max()+2)
+norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+clb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap),ax=ax,shrink=0.8,
+                   pad=0.11)
+clb.ax.set_title('Initial number \n of species',fontsize=10,
+                 pad=7.5)
 
+subfig = sns.heatmap(pivot_interact_dist_no_species,annot=True,annot_kws={'size':15},
+                     ax=ax,cbar=False,vmin=interact_dist_no_species_comm['No_Species'].min(),
+                     vmax=interact_dist_no_species_comm['No_Species'].max()+2,
+                     cmap=cmap,linewidths=1,linecolor='white')
+subfig.set(xlabel=None,ylabel=None)
 
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/min_species_for_invasibility_per_dist.png",
+            dpi=300,bbox_inches='tight')
+
+sns.scatterplot(min_species_invasibility_df,x='No_Species',y='Survival_Fraction')
