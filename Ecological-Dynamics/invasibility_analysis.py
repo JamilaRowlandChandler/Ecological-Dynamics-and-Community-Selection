@@ -8,7 +8,7 @@ Created on Mon Mar 11 13:49:48 2024
 ##############################
 
 # Home - cd Documents/PhD/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/
-# Work - cd "Documents/PhD for github/Ecological-Dynamics-and-Community-Selection"
+# Work - cd "Documents/PhD for github/Ecological-Dynamics-and-Community-Selection" 
 
 import numpy as np
 import matplotlib as mpl
