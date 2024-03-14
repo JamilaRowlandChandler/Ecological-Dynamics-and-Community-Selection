@@ -233,6 +233,8 @@ min_species_invasibility_df['No_Species'] = min_species_invasibility_df['No_Spec
 
 min_species_invasibility_df['Survival_Fraction'] = min_species_invasibility_df['Diversity']/min_species_invasibility_df['No_Species']
 
+min_species_invasibility_df.to_csv("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/min_species_invasibility.csv")
+
 ######################################################################
 
 interact_dist_no_species_comm = min_species_invasibility_df.groupby(['mu_a','sigma_a'])['No_Species'].mean()
@@ -246,8 +248,8 @@ pivot_interact_dist_no_species = interact_dist_no_species_comm.pivot(index='mu_a
 fig, ax  = plt.subplots(1,1,figsize=(6,5),layout='constrained')
 fig.suptitle('Min. species pool size needed to generate "invadable" communities',
              fontsize=14)
-fig.supxlabel('Mean interaction strength',fontsize=12)
-fig.supylabel('Std. in interaction strength',fontsize=12)
+fig.supxlabel('Std. in interaction strength',fontsize=12)
+fig.supylabel('Mean interaction strength',fontsize=12)
 
 cmap = mpl.cm.Blues_r
 bounds = np.arange(interact_dist_no_species_comm['No_Species'].min(),
@@ -268,3 +270,27 @@ plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-C
             dpi=300,bbox_inches='tight')
 
 sns.scatterplot(min_species_invasibility_df,x='No_Species',y='Survival_Fraction')
+
+##########################################
+
+colours = plt.cm.jet(np.linspace(0,1,min_species_for_invasibility_per_dist['0.90.2']['Number of species']))
+
+fig, ax = plt.subplots(1,1)
+fig.supxlabel('time (t)',fontsize=14)
+fig.supylabel('Species abundance',fontsize=14)
+
+for i in range(min_species_for_invasibility_per_dist['0.90.2']['Number of species']):
+    
+    ax.plot(min_species_for_invasibility_per_dist['0.90.2']['Community'].ODE_sols['lineage 0'].t,
+               min_species_for_invasibility_per_dist['0.90.2']['Community'].ODE_sols['lineage 0'].y[i,:].T,
+             color=colours[i])
+
+ax.ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax.set_xlim(-100,4000)
+ax.set_ylim(0,1.1)
+
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/small_invadable communities.png",
+            dpi=300, bbox_inches='tight')
+
+
+

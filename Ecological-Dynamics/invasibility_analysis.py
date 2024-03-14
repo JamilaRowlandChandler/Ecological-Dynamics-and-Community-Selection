@@ -185,28 +185,32 @@ cmap = mpl.cm.plasma_r
 bounds = np.append(np.sort(np.unique(communities_df['no_species'])),52)
 norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-fig, axs = plt.subplots(4,10,sharex=True,sharey=True,figsize=(30,12),layout='constrained')
-fig.suptitle('Effect of invasibility on community diversity',fontsize=20)
-fig.supxlabel('Invasibility',fontsize=18)
-fig.supylabel('Survival fraction',fontsize=18)
+fig, axs = plt.subplots(4,6,sharex=True,sharey=True,figsize=(15,9),layout='constrained')
+fig.suptitle('Effect of invasibility on community diversity \n',fontsize=28)
+fig.supxlabel('Invasibility',fontsize=24)
+fig.supylabel('Survival fraction',fontsize=24)
 
-plt.gcf().text(0.94, 0.15, '0.2', fontsize=12,horizontalalignment='center',
+plt.gcf().text(0.5, 0.93,'Avg. interaction strength',fontsize=18,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.39, '0.15', fontsize=12,horizontalalignment='center',
+
+plt.gcf().text(0.88, 0.15, '0.2', fontsize=12,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.63, '0.1', fontsize=12,horizontalalignment='center',
+plt.gcf().text(0.88, 0.37, '0.15', fontsize=12,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.87, '0.05', fontsize=12,horizontalalignment='center',
+plt.gcf().text(0.88, 0.6, '0.1', fontsize=12,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.95, 'Std. in \n interaction \n strength', fontsize=12,
-               horizontalalignment='center',verticalalignment='center')
+plt.gcf().text(0.88, 0.8, '0.05', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.91, 0.5, 'Std. in interaction strength', fontsize=18,
+               horizontalalignment='center',verticalalignment='center',
+               rotation=90,rotation_mode='anchor')
 
 clb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap),ax=axs,shrink=0.8,
-                   pad=0.06)
-clb.ax.set_title('Initial number \n of species',fontsize=12,
+                   pad=0.12)
+clb.ax.set_title('Initial number \n of species',fontsize=18,
                  pad=7.5)
 
-mu_as = np.unique(communities_df['mu_a'])
+mu_as = np.unique(communities_df['mu_a'])[[0,2,4,6,8,9]]
 no_species_test = len(np.unique(communities_df['no_species']))
 sigma_as = np.unique(communities_df['sigma_a'])
 
@@ -218,12 +222,12 @@ for i, ax in enumerate(axs.flat):
     subfig = sns.scatterplot(data=communities_df.iloc[np.where((communities_df['sigma_a'] == sigma_a_plot[i]) & \
                                                                (communities_df['mu_a'] == mu_a_plot[i]))],
                           x='invasibilities',y='survival_fraction',hue='no_species',
-                          ax=ax,palette='plasma_r',hue_norm=norm,s=100)
+                          ax=ax,palette='plasma_r',hue_norm=norm,s=60)
     subfig.set(xlabel=None,ylabel=None)
     
-    if i < 10:
+    if i < 6:
         
-        subfig.set_title('avg. interaction = ' + str(mu_a_plot[i]),fontsize=12,pad=4)
+        subfig.set_title(str(mu_a_plot[i]),fontsize=12,pad=4)
         
     ax.get_legend().remove()
 
@@ -237,30 +241,33 @@ plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-C
 
 sns.set_style('white')
 
-fig, axs = plt.subplots(4,10,sharex=True,sharey=True,figsize=(30,12),layout='constrained')
-fig.suptitle('Effect of invasibility on community diversity',fontsize=20)
-fig.supxlabel('Initial number of species',fontsize=18)
-fig.supylabel('Survival fraction',fontsize=18)
+fig, axs = plt.subplots(4,6,sharex=True,sharey=True,figsize=(15,9),layout='constrained')
+fig.suptitle('Effect of invasibility on community diversity \n',fontsize=28)
+fig.supxlabel('Initial number of species',fontsize=24)
+fig.supylabel('Survival fraction',fontsize=24)
 
-plt.gcf().text(0.94, 0.15, '0.2', fontsize=12,horizontalalignment='center',
+plt.gcf().text(0.5, 0.93,'Avg. interaction strength',fontsize=18,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.39, '0.15', fontsize=12,horizontalalignment='center',
+
+plt.gcf().text(0.87, 0.15, '0.2', fontsize=12,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.63, '0.1', fontsize=12,horizontalalignment='center',
+plt.gcf().text(0.87, 0.37, '0.15', fontsize=12,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.87, '0.05', fontsize=12,horizontalalignment='center',
+plt.gcf().text(0.87, 0.6, '0.1', fontsize=12,horizontalalignment='center',
                verticalalignment='center')
-plt.gcf().text(0.94, 0.95, 'Std. in \n interaction \n strength', fontsize=12,
-               horizontalalignment='center',verticalalignment='center')
+plt.gcf().text(0.87, 0.8, '0.05', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.9, 0.5, 'Std. in interaction strength', fontsize=18,
+               horizontalalignment='center',verticalalignment='center',
+               rotation=90,rotation_mode='anchor')
 
 #norm = plt.Normalize(0,1)
 s_m = plt.cm.ScalarMappable(cmap="viridis_r", norm=mpl.colors.PowerNorm(gamma=1.5,vmin=0,vmax=1))
-
-clb = plt.colorbar(s_m, ax=axs)
-clb.ax.set_title('Community \n invasibility',fontsize=12,
+clb = plt.colorbar(s_m, ax=axs,shrink=0.8,pad=0.12)
+clb.ax.set_title('Community \n invasibility',sns.set_style('white'),fontsize=18,
                  pad=7.5)
 
-mu_as = np.unique(communities_df['mu_a'])
+mu_as = np.unique(communities_df['mu_a'])[[0,2,4,6,8,9]]
 sigma_as = np.unique(communities_df['sigma_a'])
 
 sigma_a_plot = np.repeat(sigma_as,len(mu_as))
@@ -275,11 +282,137 @@ for i, ax in enumerate(axs.flat):
                          c = communities_df.loc[np.where((communities_df['sigma_a'] == sigma_a_plot[i]) & \
                                     (communities_df['mu_a'] == mu_a_plot[i])),'invasibilities'],
                          norm = mpl.colors.PowerNorm(gamma=1.5,vmin=0,vmax=1),cmap='viridis_r',
-                         s = 50)
+                         s = 20)
 
-    if i < 10:
+    if i < 6:
         
-        ax.set_title('avg. interaction = ' + str(mu_a_plot[i]),fontsize=12,pad=4)
+        ax.set_title(str(mu_a_plot[i]),fontsize=12,pad=4)
  
 plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/nospecies_survivalfraction.png",
             dpi=300,bbox_inches='tight')
+
+################################################################################
+
+min_species_invasibility_df = pd.read_csv("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/min_species_invasibility.csv",
+                                          index_col=0)
+
+min_species_invasibility_df.rename(columns={'Community':'community','Lineage':'lineage',
+                                            'No_Species':'no_species','Invasibility':'invasibilities',
+                                            'Diversity':'diversity','Survival_Fraction':'survival_fraction'},
+                                   inplace=True)
+
+communities_with_smallspeciespoolinvadable = pd.concat([min_species_invasibility_df,
+                                                        communities_df.drop(columns='fluctuations')])
+communities_with_smallspeciespoolinvadable.reset_index(inplace=True)
+
+#####################################
+
+sns.set_style('white')
+
+fig, axs = plt.subplots(4,6,sharex=True,sharey=True,figsize=(15,9),layout='constrained')
+fig.suptitle('Effect of invasibility on community diversity \n',fontsize=28)
+fig.supxlabel('Initial number of species',fontsize=24)
+fig.supylabel('Survival fraction',fontsize=24)
+
+plt.gcf().text(0.5, 0.93,'Avg. interaction strength',fontsize=18,horizontalalignment='center',
+               verticalalignment='center')
+
+plt.gcf().text(0.87, 0.15, '0.2', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.87, 0.37, '0.15', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.87, 0.6, '0.1', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.87, 0.8, '0.05', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.9, 0.5, 'Std. in interaction strength', fontsize=18,
+               horizontalalignment='center',verticalalignment='center',
+               rotation=90,rotation_mode='anchor')
+
+#norm = plt.Normalize(0,1)
+s_m = plt.cm.ScalarMappable(cmap="viridis_r", norm=mpl.colors.PowerNorm(gamma=1.5,vmin=0,vmax=1))
+clb = plt.colorbar(s_m, ax=axs,shrink=0.8,pad=0.12)
+clb.ax.set_title('Community \n invasibility',sns.set_style('white'),fontsize=18,
+                 pad=7.5)
+
+mu_as = np.unique(communities_df['mu_a'])[[0,2,4,6,8,9]]
+sigma_as = np.unique(communities_df['sigma_a'])
+
+sigma_a_plot = np.repeat(sigma_as,len(mu_as))
+mu_a_plot = np.tile(mu_as,len(sigma_as))
+
+for i, ax in enumerate(axs.flat):
+    
+    ax.scatter(x=communities_with_smallspeciespoolinvadable.loc[np.where((communities_with_smallspeciespoolinvadable['sigma_a'] == sigma_a_plot[i]) & \
+                                    (communities_with_smallspeciespoolinvadable['mu_a'] == mu_a_plot[i])),'no_species'],
+                         y = communities_with_smallspeciespoolinvadable.loc[np.where((communities_with_smallspeciespoolinvadable['sigma_a'] == sigma_a_plot[i]) & \
+                                    (communities_with_smallspeciespoolinvadable['mu_a'] == mu_a_plot[i])),'survival_fraction'],
+                         c = communities_with_smallspeciespoolinvadable.loc[np.where((communities_with_smallspeciespoolinvadable['sigma_a'] == sigma_a_plot[i]) & \
+                                    (communities_with_smallspeciespoolinvadable['mu_a'] == mu_a_plot[i])),'invasibilities'],
+                         norm = mpl.colors.PowerNorm(gamma=1.5,vmin=0,vmax=1),cmap='viridis_r',
+                         s = 20)
+
+    if i < 6:
+        
+        ax.set_title(str(mu_a_plot[i]),fontsize=12,pad=4)
+
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/nospecies_survivalfraction_withmininvade.png",
+            dpi=300,bbox_inches='tight')
+
+################################
+
+sns.set_style('white')
+
+cmap = mpl.cm.plasma_r
+bounds = np.append(np.sort(np.unique(communities_with_smallspeciespoolinvadable['no_species'])),52)
+norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+
+fig, axs = plt.subplots(4,6,sharex=True,sharey=True,figsize=(15,9),layout='constrained')
+fig.suptitle('Effect of invasibility on community diversity \n',fontsize=28)
+fig.supxlabel('Invasibility',fontsize=24)
+fig.supylabel('Survival fraction',fontsize=24)
+
+plt.gcf().text(0.5, 0.93,'Avg. interaction strength',fontsize=18,horizontalalignment='center',
+               verticalalignment='center')
+
+plt.gcf().text(0.88, 0.15, '0.2', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.88, 0.37, '0.15', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.88, 0.6, '0.1', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.88, 0.8, '0.05', fontsize=12,horizontalalignment='center',
+               verticalalignment='center')
+plt.gcf().text(0.91, 0.5, 'Std. in interaction strength', fontsize=18,
+               horizontalalignment='center',verticalalignment='center',
+               rotation=90,rotation_mode='anchor')
+
+clb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap),ax=axs,shrink=0.8,
+                   pad=0.12)
+clb.ax.set_title('Initial number \n of species',fontsize=18,
+                 pad=7.5)
+
+mu_as = np.unique(communities_df['mu_a'])[[0,2,4,6,8,9]]
+no_species_test = len(np.unique(communities_with_smallspeciespoolinvadable['no_species']))
+sigma_as = np.unique(communities_df['sigma_a'])
+
+sigma_a_plot = np.repeat(sigma_as,len(mu_as))
+mu_a_plot = np.tile(mu_as,len(sigma_as))
+
+for i, ax in enumerate(axs.flat):
+    
+    subfig = sns.scatterplot(data=communities_with_smallspeciespoolinvadable.iloc[np.where((communities_with_smallspeciespoolinvadable['sigma_a'] == sigma_a_plot[i]) & \
+                                                               (communities_with_smallspeciespoolinvadable['mu_a'] == mu_a_plot[i]))],
+                          x='invasibilities',y='survival_fraction',hue='no_species',
+                          ax=ax,palette='plasma_r',hue_norm=norm,s=60)
+    subfig.set(xlabel=None,ylabel=None)
+    
+    if i < 6:
+        
+        subfig.set_title(str(mu_a_plot[i]),fontsize=12,pad=4)
+        
+    ax.get_legend().remove()
+
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/invasibility_survivalfraction_2_withmininvade.png",
+            dpi=300,bbox_inches='tight')
+        
