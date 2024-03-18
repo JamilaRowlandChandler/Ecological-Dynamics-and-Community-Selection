@@ -1231,8 +1231,7 @@ def gLV_ode(t,spec,growth_r,interact_mat,dispersal):
         array of change in population dynamics at time t aka dS/dt.
 
     '''
-    
-    #dSdt = np.multiply(growth_r - np.matmul(interact_mat,spec), spec) + dispersal
+
     dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
     
     return dSdt
