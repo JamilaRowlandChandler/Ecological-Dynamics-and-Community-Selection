@@ -1556,7 +1556,7 @@ def find_normalised_peaks(data):
         return np.array([np.nan]) # return np.nan
     
 def community_object_to_df(community_object,community_label=0,interaction_strength_mean=True,
-                           interaction_strength_std=True,no_species=True,no_unique_compositions=True,
+                           interaction_strength_std=True,dispersal=False,no_species=True,no_unique_compositions=True,
                            diversity=True,fluctuations=True,invasibility=True,le=False):
     
     no_lineages = len(community_object.ODE_sols)
@@ -1568,9 +1568,9 @@ def community_object_to_df(community_object,community_label=0,interaction_streng
     
     ############## Repeated attributes ####################
     
-    potential_rep_attributes = ['mu_a','sigma_a','no_species','no_unique_compositions']
+    potential_rep_attributes = ['mu_a','sigma_a','dispersal','no_species','no_unique_compositions']
     rep_attributes_to_get = [interaction_strength_mean,interaction_strength_std,
-                             no_species,no_unique_compositions]
+                             dispersal,no_species,no_unique_compositions]
     rep_attribute_names = list(itertools.compress(potential_rep_attributes,rep_attributes_to_get))
     
     rep_attr_cols = [np.repeat(getattr(community_object,attribute_name),no_lineages) \
@@ -1611,9 +1611,76 @@ def community_object_to_df(community_object,community_label=0,interaction_streng
     community_df = community_df.set_axis(col_names,axis=1)
     
     return community_df
-    
 
+def community_object_to_df2(community_object,
+                         community_attributes=['mu_a','sigma_a','no_species',
+                                               'no_unique_compositions','unique_composition_label',
+                                               'diversity','fluctuations','invasibilities'],
+                         community_label=0):
+    
+    no_lineages = len(community_object.ODE_sols)
+    
+    community_col = np.repeat(community_label,no_lineages)
+    
+    lineage_col = list(community_object.ODE_sols.keys())
+    lineage_col = [int(lineage.replace('lineage ','')) for lineage in lineage_col]
+    
+    ###############################################
+    
+    def extract_attribute_make_df_col(community_object,attribute_name,no_lineages=no_lineages):
         
+        try:
+        
+            attribute = getattr(community_object,attribute_name)
+            
+        except AttributeError:
+        
+            raise Exception('Community object has no attribute ' + str(attribute_name))
+            
+            exit
+        
+        if isinstance(attribute,(int,float,str,np.int32,np.int64,np.float32,np.float32)):
+            
+            attribute_col = np.repeat(attribute,no_lineages)
+            
+        elif isinstance(attribute,dict):
+            
+            attribute_col = list(attribute.values())
+        
+        elif isinstance(attribute,(list,np.ndarraytuple)):
+            
+            attribute_col = attribute
+        
+        return attribute_col
+    
+    attribute_columns = [community_col] + [lineage_col] + \
+        [extract_attribute_make_df_col(community_object, attribute_name) \
+             for attribute_name in community_attributes]
+        
+    col_names = ['community','lineage'] + community_attributes
+    
+    ############## Lyapunov exponents #################
+        
+    if 'lyapunov exponents' in community_attributes:
+        
+        col_names.remove('lyapunov_exponents')
+        
+        le_mean_col = [lyapunov_exponent[0] \
+                       for lyapunov_exponent in community_object.lyapunov_exponents.values()]
+        le_std_col = [lyapunov_exponent[1] \
+                       for lyapunov_exponent in community_object.lyapunov_exponents.values()]
+            
+        attribute_columns += [le_mean_col,le_std_col]
+        col_names += ['lyapunov_exponent_mean','lyapunov_exponent_std']
+        
+    ############# Convert lists to df ################
+    
+    community_df = pd.DataFrame(attribute_columns)
+    community_df = community_df.T
+    community_df = community_df.set_axis(col_names,axis=1)
+    
+    return community_df
+    
 def pickle_dump(filename,data):
     
     '''
