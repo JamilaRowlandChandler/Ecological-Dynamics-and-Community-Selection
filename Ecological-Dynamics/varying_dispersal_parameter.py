@@ -74,19 +74,8 @@ def vary_community_dispersal_rate(dispersal_rates,initial_community_dynamics,cou
 communities_migration_rates = {key : [vary_community_dispersal_rate(dispersal_rates,community_dynamics,count) \
                                for count, community_dynamics in enumerate(communities_no_species)] \
                                for key, communities_no_species in community_dynamics_invasibility_015['0.90.15'].items()}
-    
-dispersal_rate_df_list = [community_object_to_df(community_obj,community_label=i,dispersal=True) \
-                             for communities_no_species in communities_migration_rates.values() \
-                                 for i, community_different_dispersal in enumerate(communities_no_species) \
-                                     for community_obj in community_different_dispersal]
-    
-dispersal_rate_df = pd.concat(dispersal_rate_df_list,ignore_index=True)
-dispersal_rate_df['no_species'] = dispersal_rate_df['no_species'].astype(int)
-dispersal_rate_df['survival_fraction'] = dispersal_rate_df['diversity']/dispersal_rate_df['no_species']
 
-###
-
-dispersal_rate_df_list2 = [community_object_to_df2(community_obj,
+dispersal_rate_df_list = [community_object_to_df2(community_obj,
                                                    community_attributes = ['mu_a',
                                                         'sigma_a','dispersal',
                                                         'no_species',
@@ -99,37 +88,25 @@ dispersal_rate_df_list2 = [community_object_to_df2(community_obj,
                                  for i, community_different_dispersal in enumerate(communities_no_species) \
                                      for community_obj in community_different_dispersal]
     
-dispersal_rate_df2 = pd.concat(dispersal_rate_df_list2,ignore_index=True)
-dispersal_rate_df2['no_species'] = dispersal_rate_df2['no_species'].astype(int)
-dispersal_rate_df2['survival_fraction'] = dispersal_rate_df2['diversity']/dispersal_rate_df2['no_species']
+dispersal_rate_df = pd.concat(dispersal_rate_df_list,ignore_index=True)
+dispersal_rate_df['no_species'] = dispersal_rate_df['no_species'].astype(int)
+dispersal_rate_df['survival_fraction'] = dispersal_rate_df['diversity']/dispersal_rate_df['no_species']
 
-dispersal_rate_df2['community_lineage_label'] = [str(int(dispersal_rate_df2.iloc[i]['community'])) + \
-                                                 str(int(dispersal_rate_df2.iloc[i]['lineage'])) + \
-                                                 str(int(dispersal_rate_df2.iloc[i]['no_species'])) \
-                                                     for i in range(dispersal_rate_df2.shape[0])]
+dispersal_rate_df['community_lineage_label'] = [str(int(dispersal_rate_df.iloc[i]['community'])) + \
+                                                 str(int(dispersal_rate_df.iloc[i]['lineage'])) + \
+                                                 str(int(dispersal_rate_df.iloc[i]['no_species'])) \
+                                                     for i in range(dispersal_rate_df.shape[0])]
 fig, ax = plt.subplots(1,1)           
-sns.lineplot(dispersal_rate_df2.iloc[np.where(dispersal_rate_df2['no_species'] == 49)],
+sns.lineplot(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 49)],
              x='dispersal',y='invasibilities',hue='community_lineage_label',
              palette=sns.color_palette("icefire",n_colors=50),ax=ax)                                            
 plt.xscale('log')
 ax.get_legend().remove()
 
-sns.lineplot(dispersal_rate_df2,x='dispersal',y='invasibilities',hue='no_species',estimator=None)                                            
+sns.lineplot(dispersal_rate_df,x='dispersal',y='invasibilities',hue='no_species',estimator=None)                                            
 plt.xscale('log')
 
-
-
-
-dispersal_rate_49species = dispersal_rate_df2.iloc[np.where(dispersal_rate_df2['no_species'] == 49)]
-
-fig, ax = plt.subplots(1,1)
-fig.supxlabel('dispersal rate',fontsize=14)
-fig.supylabel('invasibility',fontsize=14)
-
-for i in np.unique(dispersal_rate_49species['community_label']):
-    
-    ax.plot(dispersal_rate_49species.iloc[np.where(dispersal_rate_49species['community_label'] == i)]['dispersal'],
-            dispersal_rate_49species.iloc[np.where(dispersal_rate_49species['community_label'] == i)]['invasibilities'])
-    plt.xscale('log')
-
+dispersal_rate_df.to_csv("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/varying_dispersal_rates.csv")
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dispersal_rates.pkl",
+            communities_migration_rates)
 
