@@ -106,7 +106,121 @@ ax.get_legend().remove()
 sns.lineplot(dispersal_rate_df,x='dispersal',y='invasibilities',hue='no_species',estimator=None)                                            
 plt.xscale('log')
 
+############################## Save files ############################
+
+############ Home ###############
+
 dispersal_rate_df.to_csv("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/varying_dispersal_rates.csv")
 pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dispersal_rates.pkl",
             communities_migration_rates)
 
+############################# Read files ##############################
+
+############# Work #############
+
+communities_migration_rates = pd.read_pickle("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dispersal_rates.pkl")
+dispersal_rate_df = pd.read_csv("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/varying_dispersal_rates.csv",
+                                index_col=0)
+
+##########################
+
+fig, ax = plt.subplots(1,1)           
+sns.lineplot(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 13)],
+             x='dispersal',y='invasibilities',hue='community_lineage_label',
+             palette=sns.color_palette("icefire",n_colors=50),ax=ax)                                            
+plt.xscale('log')
+ax.get_legend().remove()
+
+fig, ax = plt.subplots(1,1)           
+sns.lineplot(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 13)],
+             x='dispersal',y='invasibilities',ax=ax)                                            
+plt.xscale('log')
+ax.get_legend().remove()
+
+fig, ax = plt.subplots(1,1)           
+sns.heatmap(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 13)].pivot(index='dispersal',
+                                                                      column='community_lineage_label',
+                                                                      values='invasibilities'))
+
+plt.plot(communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].t,
+         communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].y.T)
+
+def gLV_sde_additive_noise(t,spec,
+                           growth_r,interact_mat,dispersal,
+                           rng,sigma_noise):
+    
+    '''
+    
+    SDE system of generalised Lotka-Volterra model with gaussian white noise
+
+    Parameters
+    ----------
+    t : float
+        time.
+    spec : float
+        Species population dynamics at time t.
+    growth_r : np.array of float64, size (n,)
+        Array of species growth rates.
+    interact_mat : np.array of float64, size (n,n)
+        Interaction maitrx.
+    dispersal : float.
+        Dispersal or migration rate.
+    rng : np.random Generator
+        Used to generate gaussian white noise.
+    dt : float
+        Time step used by the solver.
+
+    Returns
+    -------
+    dSdt : np.array of float64, size (n,)
+        array of change in population dynamics at time t aka dS/dt.
+
+    '''
+
+    dSdt = (np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal) + \
+            np.multiply(rng.normal(loc=0,scale=sigma_noise,size=len(spec)),spec)
+    
+    return dSdt
+
+def gLV_sde_simulation(community_obj,lineage,t_end,sigma_noise=0.001):
+    
+    '''
+    
+    Simulate generalised Lotka-Volterra dynamics.
+
+    Parameters
+    ----------
+    growth_r : np.array of float64, size (n,)
+        Array of species growth rates.
+    interact_mat : np.array of float64, size (n,n)
+        Interaction maitrx.
+    dispersal : float.
+        Dispersal or migration rate.
+    t_end : int or float
+        Time for end of simulation.
+    init_abundance : np.array of float64, size (n,)
+        Initial species abundances.
+
+    Returns
+    -------
+     OdeResult object of scipy.integrate.solve_ivp module
+        (Deterministic) Solution to gLV ODE system.
+
+    '''
+    
+    rng = np.random.default_rng()
+    
+    return solve_ivp(gLV_sde_additive_noise,[0,t_end],community_obj.initial_abundances[lineage],
+                     args=(community_obj.growth_rates,community_obj.interaction_matrix,
+                           community_obj.dispersal,rng,sigma_noise),method='RK45',
+                     t_eval=np.linspace(0,t_end,2000))
+
+result = gLV_sde_simulation(communities_migration_rates['25 species'][1][2],'lineage 0',10000)
+
+result2 = gLV_sde_simulation(communities_migration_rates['49 species'][-1][0],'lineage 0',10000,
+                             sigma_noise=0.01)
+result3 = gLV_sde_simulation(communities_migration_rates['49 species'][-1][1],'lineage 0',10000,
+                             sigma_noise=0.01)
+
+plt.plot(result2.t,result2.y.T)
+plt.plot(result3.t,result3.y.T)

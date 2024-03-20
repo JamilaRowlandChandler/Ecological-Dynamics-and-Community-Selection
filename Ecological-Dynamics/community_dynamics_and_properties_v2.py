@@ -474,6 +474,39 @@ class gLV:
                          args=(self.growth_rates,self.interaction_matrix,self.dispersal),
                          method='RK45',t_eval=np.linspace(0,t_end,200))
     
+    def gLV_sde_simulation(self,t_end,dt=0.01):
+        
+        '''
+        
+        Simulate generalised Lotka-Volterra dynamics.
+
+        Parameters
+        ----------
+        growth_r : np.array of float64, size (n,)
+            Array of species growth rates.
+        interact_mat : np.array of float64, size (n,n)
+            Interaction maitrx.
+        dispersal : float.
+            Dispersal or migration rate.
+        t_end : int or float
+            Time for end of simulation.
+        init_abundance : np.array of float64, size (n,)
+            Initial species abundances.
+
+        Returns
+        -------
+         OdeResult object of scipy.integrate.solve_ivp module
+            (Deterministic) Solution to gLV ODE system.
+
+        '''
+        
+        rng = np.random.default_rng()
+        
+        return solve_ivp(gLV_sde_additive_noise,[0,t_end],self.initial_abundances,
+                         args=(self.growth_rates,self.interaction_matrix,self.dispersal,
+                               rng,dt),method='RK45',t_eval=np.linspace(0,t_end,200),
+                         max_step=dt,atol=1,rtol=1)
+    
     ########### Community properties #############
     
     def identify_community_properties(self,t_end):
@@ -1236,6 +1269,44 @@ def gLV_ode(t,spec,growth_r,interact_mat,dispersal):
     
     return dSdt
 
+def gLV_sde_additive_noise(t,spec,
+                           growth_r,interact_mat,dispersal,
+                           rng,dt):
+    
+    '''
+    
+    SDE system of generalised Lotka-Volterra model with gaussian white noise
+
+    Parameters
+    ----------
+    t : float
+        time.
+    spec : float
+        Species population dynamics at time t.
+    growth_r : np.array of float64, size (n,)
+        Array of species growth rates.
+    interact_mat : np.array of float64, size (n,n)
+        Interaction maitrx.
+    dispersal : float.
+        Dispersal or migration rate.
+    rng : np.random Generator
+        Used to generate gaussian white noise.
+    dt : float
+        Time step used by the solver.
+
+    Returns
+    -------
+    dSdt : np.array of float64, size (n,)
+        array of change in population dynamics at time t aka dS/dt.
+
+    '''
+
+    dSdt = (np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal) + \
+            np.multiply(rng.normal(loc=0,scale=np.sqrt(dt),size=len(spec)),spec)
+    
+    return dSdt
+
+
 ####################### Random Global Functions ###############
 
 def generate_distribution(mu_maxmin,std_maxmin,dict_labels=['mu_a','sigma_a'],
@@ -1705,5 +1776,13 @@ def pickle_dump(filename,data):
         pickle.dump(data, fp)
 
 
-
+def gLV_gillespie(growth_rates,interaction_matrix,initial_abundances,t_end,no_species):
+    
+    transition_matrix = np.zeros((3*no_species),no_species)
+    
+    for i in transition_matrix.shape[1]:
+        
+        transition_matrix[i,3*i:3*(i+1)] = [1,-1,-1]
+    
+    pass 
 
