@@ -1269,13 +1269,17 @@ def gLV_ode(t,spec,growth_r,interact_mat,dispersal):
     
     return dSdt
 
-def gLV_sde_additive_noise(t,spec,
-                           growth_r,interact_mat,dispersal,
-                           rng,dt):
+def gLV_ode_with_extinction_threshold(t,spec,growth_r,interact_mat,dispersal,
+                                      extinct_thresh=1e-9):
     
     '''
     
-    SDE system of generalised Lotka-Volterra model with gaussian white noise
+    ODE system from generalised Lotka-Volterra model. 
+    
+    Removes species below some extinction threshold to cap abundances species can
+    reinvade from and removes very small values that could cause numerical instability.
+    This is useful when dispersal = 0.
+    
 
     Parameters
     ----------
@@ -1287,12 +1291,10 @@ def gLV_sde_additive_noise(t,spec,
         Array of species growth rates.
     interact_mat : np.array of float64, size (n,n)
         Interaction maitrx.
-    dispersal : float.
+    dispersal : float
         Dispersal or migration rate.
-    rng : np.random Generator
-        Used to generate gaussian white noise.
-    dt : float
-        Time step used by the solver.
+    extinct_thresh : float
+        Extinction threshold.
 
     Returns
     -------
@@ -1300,12 +1302,11 @@ def gLV_sde_additive_noise(t,spec,
         array of change in population dynamics at time t aka dS/dt.
 
     '''
-
-    dSdt = (np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal) + \
-            np.multiply(rng.normal(loc=0,scale=np.sqrt(dt),size=len(spec)),spec)
+    spec[spec < extinct_thresh] = 0 # set species abundances below extinction threshold to 0
+    
+    dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
     
     return dSdt
-
 
 ####################### Random Global Functions ###############
 
@@ -1774,15 +1775,3 @@ def pickle_dump(filename,data):
     with open(filename, 'wb') as fp:
         
         pickle.dump(data, fp)
-
-
-def gLV_gillespie(growth_rates,interaction_matrix,initial_abundances,t_end,no_species):
-    
-    transition_matrix = np.zeros((3*no_species),no_species)
-    
-    for i in transition_matrix.shape[1]:
-        
-        transition_matrix[i,3*i:3*(i+1)] = [1,-1,-1]
-    
-    pass 
-

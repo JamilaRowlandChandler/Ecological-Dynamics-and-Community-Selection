@@ -122,28 +122,151 @@ communities_migration_rates = pd.read_pickle("C:/Users/Jamil/Documents/Data and 
 dispersal_rate_df = pd.read_csv("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/varying_dispersal_rates.csv",
                                 index_col=0)
 
-##########################
+colours = plt.cm.jet(np.linspace(0,1,50))
 
-fig, ax = plt.subplots(1,1)           
-sns.lineplot(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 13)],
-             x='dispersal',y='invasibilities',hue='community_lineage_label',
-             palette=sns.color_palette("icefire",n_colors=50),ax=ax)                                            
-plt.xscale('log')
-ax.get_legend().remove()
+fig, ax = plt.subplots(1,2,figsize=(10,4.5),sharex=True,sharey=True,layout='constrained')
+fig.suptitle("The effect of dispersal on a single community's dynamics \n",fontsize=16)
+fig.supxlabel('time (t)',fontsize=14)
+fig.supylabel('Species abundance',fontsize=14)
 
-fig, ax = plt.subplots(1,1)           
-sns.lineplot(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 13)],
-             x='dispersal',y='invasibilities',ax=ax)                                            
-plt.xscale('log')
-ax.get_legend().remove()
+for i in range(49):
+    
+    ax[0].plot(communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].t,
+             communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].y[i,:].T,
+             color=colours[i])
+    
+ax[0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[0].set_xlim(-100,7000)
+ax[0].set_ylim(0,0.8)
+ax[0].set_title('dispersal = 1e-9',fontsize=14)
 
-fig, ax = plt.subplots(1,1)           
-sns.heatmap(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 13)].pivot(index='dispersal',
-                                                                      column='community_lineage_label',
-                                                                      values='invasibilities'))
+for i in range(49):
+    
+    ax[1].plot(communities_migration_rates['49 species'][-1][0].ODE_sols['lineage 0'].t,
+             communities_migration_rates['49 species'][-1][0].ODE_sols['lineage 0'].y[i,:].T,
+             color=colours[i])
 
-plt.plot(communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].t,
-         communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].y.T)
+ax[1].set_title('no dispersal',fontsize=14)
+ax[1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[1].set_xlim(-100,7000)
+ax[1].set_ylim(0,0.75)
+
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/one_community_dispersal01e-9.png",
+            dpi=300,bbox_inches='tight')
+
+a = communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].y
+
+def gLV_ode_rounded(t,spec,growth_r,interact_mat,dispersal,extinct_thresh=1e-9):
+
+    spec[spec < extinct_thresh] = 0
+    
+    dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
+    
+    return dSdt
+
+community_obj_1eminus9 = communities_migration_rates['49 species'][-1][1]
+community_obj_0 = communities_migration_rates['49 species'][-1][0]
+
+result_1eminus9 = solve_ivp(gLV_ode_rounded,[0,t_end],community_obj_1eminus9.initial_abundances['lineage 0'],
+                 args=(community_obj_1eminus9.growth_rates,community_obj_1eminus9.interaction_matrix,
+                       community_obj_1eminus9.dispersal,1e-10),method='RK45',
+                 t_eval=np.linspace(0,t_end,2000))
+
+result_0 = solve_ivp(gLV_ode_rounded,[0,t_end],community_obj_0.initial_abundances['lineage 0'],
+                 args=(community_obj_0.growth_rates,community_obj_0.interaction_matrix,
+                       community_obj_0.dispersal,1e-10),method='RK45',
+                 t_eval=np.linspace(0,t_end,2000))
+
+colours = plt.cm.jet(np.linspace(0,1,50))
+
+fig, ax = plt.subplots(1,2,figsize=(10,4.5),sharex=True,sharey=True,layout='constrained')
+fig.supxlabel('time (t)',fontsize=14)
+fig.supylabel('Species abundance',fontsize=14)
+
+for i in range(49):
+    
+    ax[0].plot(communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].t,
+             communities_migration_rates['49 species'][-1][1].ODE_sols['lineage 0'].y[i,:].T,
+             color=colours[i])
+    
+ax[0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[0].set_xlim(-100,7000)
+ax[0].set_ylim(0,0.8)
+ax[0].set_title('not rounded',fontsize=14)
+
+for i in range(49):
+    
+    ax[1].plot(result_1eminus9.t,result_1eminus9.y[i,:].T,
+             color=colours[i])
+
+ax[1].set_title('rounded',fontsize=14)
+ax[1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[1].set_xlim(-100,7000)
+ax[1].set_ylim(0,0.75)
+
+####
+
+fig, ax = plt.subplots(1,2,figsize=(10,4.5),sharex=True,sharey=True,layout='constrained')
+fig.supxlabel('time (t)',fontsize=14)
+fig.supylabel('Species abundance',fontsize=14)
+
+for i in range(49):
+    
+    ax[0].plot(communities_migration_rates['49 species'][-1][0].ODE_sols['lineage 0'].t,
+             communities_migration_rates['49 species'][-1][0].ODE_sols['lineage 0'].y[i,:].T,
+             color=colours[i])
+    
+ax[0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[0].set_xlim(-100,10000)
+ax[0].set_ylim(0,0.8)
+ax[0].set_title('not rounded',fontsize=14)
+
+for i in range(49):
+    
+    ax[1].plot(result_0.t,result_0.y[i,:].T,
+             color=colours[i])
+
+ax[1].set_title('rounded',fontsize=14)
+ax[1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[1].set_xlim(-100,10000)
+ax[1].set_ylim(0,0.75)
+
+################
+
+community_obj_1eminus3 = communities_migration_rates['49 species'][-1][4]
+
+result_1eminus3 = solve_ivp(gLV_ode_rounded,[0,t_end],community_obj_1eminus3.initial_abundances['lineage 0'],
+                 args=(community_obj_1eminus3.growth_rates,community_obj_1eminus3.interaction_matrix,
+                       community_obj_1eminus3.dispersal,1e-9),method='RK45',
+                 t_eval=np.linspace(0,t_end,2000))
+
+colours = plt.cm.jet(np.linspace(0,1,50))
+
+fig, ax = plt.subplots(1,2,figsize=(10,4.5),sharex=True,sharey=True,layout='constrained')
+fig.supxlabel('time (t)',fontsize=14)
+fig.supylabel('Species abundance',fontsize=14)
+
+for i in range(49):
+    
+    ax[0].plot(communities_migration_rates['49 species'][-1][4].ODE_sols['lineage 0'].t,
+             communities_migration_rates['49 species'][-1][4].ODE_sols['lineage 0'].y[i,:].T,
+             color=colours[i])
+    
+ax[0].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[0].set_xlim(-100,7000)
+ax[0].set_ylim(0,0.8)
+ax[0].set_title('not rounded',fontsize=14)
+
+for i in range(49):
+    
+    ax[1].plot(result_1eminus3.t,result_1eminus3.y[i,:].T,
+             color=colours[i])
+
+ax[1].set_title('rounded',fontsize=14)
+ax[1].ticklabel_format(axis='y', style='scientific', scilimits=(0,0))
+ax[1].set_xlim(-100,7000)
+ax[1].set_ylim(0,0.75)
+
 
 def gLV_sde_additive_noise(t,spec,
                            growth_r,interact_mat,dispersal,
