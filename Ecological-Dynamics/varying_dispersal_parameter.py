@@ -96,15 +96,6 @@ dispersal_rate_df['community_lineage_label'] = [str(int(dispersal_rate_df.iloc[i
                                                  str(int(dispersal_rate_df.iloc[i]['lineage'])) + \
                                                  str(int(dispersal_rate_df.iloc[i]['no_species'])) \
                                                      for i in range(dispersal_rate_df.shape[0])]
-fig, ax = plt.subplots(1,1)           
-sns.lineplot(dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 49)],
-             x='dispersal',y='invasibilities',hue='community_lineage_label',
-             palette=sns.color_palette("icefire",n_colors=50),ax=ax)                                            
-plt.xscale('log')
-ax.get_legend().remove()
-
-sns.lineplot(dispersal_rate_df,x='dispersal',y='invasibilities',hue='no_species',estimator=None)                                            
-plt.xscale('log')
 
 ############################## Save files ############################
 
@@ -122,6 +113,114 @@ communities_migration_rates = pd.read_pickle("C:/Users/Jamil/Documents/Data and 
 dispersal_rate_df = pd.read_csv("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/varying_dispersal_rates.csv",
                                 index_col=0)
 
+#######################################################
+
+for no_species, communities in communities_migration_rates.items():
+    
+    print(no_species,'\n')
+    
+    for i, community_set in enumerate(communities):
+        
+        print('Commmunity ' + str(i),'\n')
+        
+        initial_conditions = np.stack(list(community_set[0].initial_abundances.values()),axis=1)
+        no_lineages = initial_conditions.shape[1]
+        
+        community_set[0].simulate_community(t_end, 'Supply initial conditions',
+                                              np.arange(no_lineages),
+                                              array_of_init_conds=initial_conditions)
+       
+communities_migration_rates_with_extinction_threshold = \
+    pickle_dump("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dispersal_rates_w_extinction.pkl")
+
+dispersal_rate_df_list = [community_object_to_df2(community_obj,
+                                                   community_attributes = ['mu_a',
+                                                        'sigma_a','dispersal',
+                                                        'no_species',
+                                                        'no_unique_compositions',
+                                                        'unique_composition_label',
+                                                        'diversity','fluctuations',
+                                                        'invasibilities'],
+                                                   community_label=i) \
+                             for communities_no_species in communities_migration_rates.values() \
+                                 for i, community_different_dispersal in enumerate(communities_no_species) \
+                                     for community_obj in community_different_dispersal]
+    
+dispersal_rate_df = pd.concat(dispersal_rate_df_list,ignore_index=True)
+dispersal_rate_df['no_species'] = dispersal_rate_df['no_species'].astype(int)
+dispersal_rate_df['survival_fraction'] = dispersal_rate_df['diversity']/dispersal_rate_df['no_species']
+
+dispersal_rate_df['community_lineage_label'] = [str(int(dispersal_rate_df.iloc[i]['community'])) + \
+                                                 str(int(dispersal_rate_df.iloc[i]['lineage'])) + \
+                                                 str(int(dispersal_rate_df.iloc[i]['no_species'])) \
+                                                     for i in range(dispersal_rate_df.shape[0])]
+
+##########################################
+
+pivot_49_species = dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == 49)\
+                                          ][['dispersal','invasibilities','community_lineage_label']].pivot(\
+                                        columns='dispersal',index='community_lineage_label',
+                                        values='invasibilities')                                                                                                                                     
+sns.heatmap(pivot_49_species)
+    
+#####
+
+og_fluctuating_lineages = dispersal_rate_df.iloc[np.where(\
+                                            (dispersal_rate_df['dispersal'] == 1e-9) & \
+                                            (dispersal_rate_df['invasibilities'] >= 0.6))][\
+                                            'community_lineage_label']
+                                                                                        
+og_nonfluctuating_lineages = dispersal_rate_df.iloc[np.where(\
+                                            (dispersal_rate_df['dispersal'] == 1e-9) & \
+                                            (dispersal_rate_df['invasibilities'] < 0.6))][\
+                                            'community_lineage_label']
+
+original_dynamics = np.empty(dispersal_rate_df.shape[0],dtype=str)
+
+for community_lineage_label in list(og_fluctuating_lineages):
+    
+    original_dynamics[np.where(dispersal_rate_df['community_lineage_label'] \
+                                    == community_lineage_label)] = \
+        'invadable'
+
+for community_lineage_label in list(og_nonfluctuating_lineages):
+    
+    original_dynamics[np.where(dispersal_rate_df['community_lineage_label'] \
+                                    == community_lineage_label)] = \
+        'non_invadable'
+                                                                                                                                                        
+dispersal_rate_df['original_dynamics'] = original_dynamics
+
+dispersal_rate_df.to_csv("C:/Users/Jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/varying_dispersal_rates_w_exinction")
+
+#############
+
+colours = plt.cm.jet(np.linspace(0,1,2))
+
+fig, ax = plt.subplots(1,1,figsize=(10,8),sharex=True,sharey=True,layout='constrained')
+fig.suptitle("The effect of dispersal on ecological dynamics",fontsize=24)
+fig.supxlabel('Dispersal rate (D)',fontsize=20)
+fig.supylabel('Invasibilty',fontsize=20)
+
+for i, no_species in enumerate(np.unique(dispersal_rate_df['no_species'])):
+
+    subfig = sns.lineplot(data=dispersal_rate_df.iloc[np.where(dispersal_rate_df['no_species'] == no_species)],
+                 x='dispersal',y='invasibilities',hue='original_dynamics',
+                 ax=ax,palette={'n':colours[0],'i':colours[1]})
+    ax.set_xscale('log')
+    ax.get_legend().remove()
+    subfig.set(xlabel=None,ylabel=None)
+    
+plt.gcf().text(0.8, 0.8,'For all communities, \n invasibility = 0 \n when dispersal = 0',
+               fontsize=14,horizontalalignment='center',
+               verticalalignment='center',
+               bbox=dict(facecolor='none', edgecolor='black'))
+
+plt.savefig("C:/Users/jamil/Documents/Data and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/dispersal_invasibility.png",
+            dpi=300,bbox_inches='tight')
+
+########################################################################################
+    
 colours = plt.cm.jet(np.linspace(0,1,50))
 
 fig, ax = plt.subplots(1,2,figsize=(10,4.5),sharex=True,sharey=True,layout='constrained')

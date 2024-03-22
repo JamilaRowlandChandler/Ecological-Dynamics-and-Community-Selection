@@ -470,42 +470,9 @@ class gLV:
 
         '''
         
-        return solve_ivp(gLV_ode,[0,t_end],self.initial_abundances,
+        return solve_ivp(gLV_ode_with_extinction_threshold,[0,t_end],self.initial_abundances,
                          args=(self.growth_rates,self.interaction_matrix,self.dispersal),
                          method='RK45',t_eval=np.linspace(0,t_end,200))
-    
-    def gLV_sde_simulation(self,t_end,dt=0.01):
-        
-        '''
-        
-        Simulate generalised Lotka-Volterra dynamics.
-
-        Parameters
-        ----------
-        growth_r : np.array of float64, size (n,)
-            Array of species growth rates.
-        interact_mat : np.array of float64, size (n,n)
-            Interaction maitrx.
-        dispersal : float.
-            Dispersal or migration rate.
-        t_end : int or float
-            Time for end of simulation.
-        init_abundance : np.array of float64, size (n,)
-            Initial species abundances.
-
-        Returns
-        -------
-         OdeResult object of scipy.integrate.solve_ivp module
-            (Deterministic) Solution to gLV ODE system.
-
-        '''
-        
-        rng = np.random.default_rng()
-        
-        return solve_ivp(gLV_sde_additive_noise,[0,t_end],self.initial_abundances,
-                         args=(self.growth_rates,self.interaction_matrix,self.dispersal,
-                               rng,dt),method='RK45',t_eval=np.linspace(0,t_end,200),
-                         max_step=dt,atol=1,rtol=1)
     
     ########### Community properties #############
     
