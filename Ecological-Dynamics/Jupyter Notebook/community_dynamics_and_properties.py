@@ -35,9 +35,7 @@ import pickle
 
 import pandas as pd
 
-########################################
-
-################ Classes ########################
+############################### Classes ########################
 
 class community_parameters:
     
@@ -91,53 +89,49 @@ class community_parameters:
         
         self.no_species = no_species
         
-        ###############
+        ############### Growth rates ####################
         
-        if usersupplied_growth is None:
+        # Select function to generate growth rates.
+        match growth_func_name:
             
-            if growth_args:
-            
+            case 'fixed':
+                
+                self.growth_rates = self.growth_rates_fixed()
+                
+            case 'normal':
+                
                 for key, value in growth_args.items():
                     
                     # Assign growth function arguments as class attributes.
                     #   (Growth function arguments are parameters for 
                     #   the growth rate distribution,)
                     setattr(self,key,value)
+                    
+                self.growth_rates = self.growth_rates_norm()
+                
+            case None:
+                
+                # Assign growth rates using the user-supplied growth rates
+                self.growth_rates = usersupplied_growth
             
-            # Select function to generate growth rates.
-            growth_func = {"fixed": self.growth_rates_fixed,
-                           "normal": self.growth_rates_norm}[growth_func_name]
-            
-            # Generate growth rates
-            self.growth_rates = growth_func()
-            
-        else:
-            
-            # Assign growth rates using the user-supplied growth rates, if supplied.
-            self.growth_rates = usersupplied_growth
-            
-        ############
+        ###################### Interaction Matrix #############
         
-        for key, value in interact_args.items():
+        match interact_func_name:
             
-            # Assign interaction matrix function arguments as class attributes.
-            setattr(self,key,value)
-        
-        if usersupplied_interactmat is None:
-            
-            # Select function to generate interaction matrix.
-            interaction_func = {"random": self.random_interaction_matrix,
-                                "random normalised by K": 
-                                    self.random_interaction_matrix_norm_by_K}[interact_func_name]
-            
-            # Generate interaction matrix
-            self.interaction_matrix = interaction_func()
-            
-        else: 
-            
-            # Assign interaction matrix using the user-supplied interaction matrix, if supplied.
-            self.interaction_matrix = usersupplied_interactmat
-            
+            case 'random':
+                
+                for key, value in interact_args.items():
+                    
+                    # Assign interaction matrix function arguments as class attributes.
+                    setattr(self,key,value)
+                    
+                # Generate interaction matrix 
+                self.interaction_matrix = self.random_interaction_matrix()
+                
+            case None:
+                
+                # Assign interaction matrix using the user-supplied interaction matrix, if supplied.
+                self.interaction_matrix = usersupplied_interactmat    
             
         self.dispersal = dispersal
         
@@ -264,37 +258,38 @@ class gLV:
         
         '''
         
-        # Assign growth rates and interaction matrix as gLV class attributes.
-        #   (This isn't necessary, but I like it.)
+        # Assign attributes from community_parameters_object to gLV
         self.no_species = community_parameters_object.no_species
         
         self.growth_rates = community_parameters_object.growth_rates
         self.interaction_matrix = community_parameters_object.interaction_matrix
         self.dispersal = community_parameters_object.dispersal
         
-        if usersupplied_init_cond is None:
+        self.t_end = t_end
         
-            # Select function used to generate initial species abundances.
-            init_cond_func_info = {"Hu":{"func":self.initial_abundances_hu,
-                                    "args":[community_parameters_object.no_species,
-                                            community_parameters_object.mu_a]},
-                              "Mallmin":{"func":self.initial_abundances_mallmin,
-                                         "args":[community_parameters_object.no_species
-                                                 ,self.dispersal]}}[init_cond_func_name]
+        ######## Generate initial species abundances ###########
+        
+        # Select function used to generate initial species abundances.
+        match init_cond_func_name:
             
-            # Generate initial conditions
-            self.initial_abundances = init_cond_func_info['func'](*init_cond_func_info['args'])
-              
-        else: 
+            case 'Hu':
+                
+                self.initial_abundances = self.initial_abundances_hu(community_parameters_object.mu_a)
             
-            # Assign initial conditions using the user-supplied initial abundances, if supplied.
-            self.initial_abundances = usersupplied_init_cond
+            case 'Mallmin':
+                
+                self.initial_abundances = self.initial_abundances_mallmin()
+            
+            case None:
+                
+                # Assign initial conditions using the user-supplied initial abundances.
+                self.initial_abundances = usersupplied_init_cond
         
         self.ODE_sol = self.gLV_simulation(t_end)
       
     ########## Functions for generating initial conditions ############
       
-    def initial_abundances_mallmin(self,no_species,dispersal):
+    def initial_abundances_mallmin(self):
         
         '''
         
@@ -313,9 +308,9 @@ class gLV:
         
         '''
         
-        return np.random.uniform(dispersal,2/no_species,no_species)
+        return np.random.uniform(self.dispersal,2/self.no_species,self.no_species)
 
-    def initial_abundances_hu(self,no_species,mu_a):
+    def initial_abundances_hu(self,mu_a):
         
         '''
         
@@ -334,7 +329,7 @@ class gLV:
         
         '''
         
-        return np.random.uniform(0,2*mu_a,no_species)
+        return np.random.uniform(0,2*mu_a,self.no_species)
 
     ####### Simulate dynamics ###############
     
@@ -370,7 +365,7 @@ class gLV:
     
     ########### Community properties #############
     
-    def identify_community_properties(self,t_end):
+    def identify_community_properties(self):
         
         '''
         
@@ -387,12 +382,12 @@ class gLV:
 
         '''
         
-        t_end_minus_last20percent = 0.8*t_end
-        t_end_minus_last30percent = 0.7*t_end
+        t_end_minus_last20percent = 0.8*self.t_end
+        t_end_minus_last30percent = 0.7*self.t_end
         
         ###### Calculate diversity-related properties ###########
         
-        final_popdyn = self.species_diversity([t_end_minus_last20percent,t_end])
+        final_popdyn = self.species_diversity([t_end_minus_last20percent,self.t_end])
         
         self.final_diversity = final_popdyn[1]
         self.final_composition = np.concatenate((np.where(final_popdyn[0] == True)[0],
@@ -628,8 +623,7 @@ class community(community_parameters):
    ########################
       
    def simulate_community(self,
-                          t_end,
-                          func_name,lineages,
+                          lineages,t_end,func_name,
                           init_cond_func_name=None,array_of_init_conds=None):
        
        '''
@@ -663,85 +657,32 @@ class community(community_parameters):
 
        '''
        
-       # Choose how to generate initial species abundances for each lineage
-       repeat_simulations_info = {"Default":{"func":self.repeat_simulations,
-                                             "args":[lineages,t_end,
-                                                     init_cond_func_name]},
-                                  "Supply initial conditions":{"func":self.repeat_simulations_supply_initcond,
-                                                               "args":[lineages,t_end,
-                                                               array_of_init_conds]}}[func_name]
+       ################ Generate initial species abundances and simulate lineage dynamics ##################
        
-       # Call function to generate initial species abundances
-       repeat_simulations_info["func"](*repeat_simulations_info["args"])
+       match func_name:
             
-   def repeat_simulations(self,lineages,t_end,init_cond_func_name):
+           case 'Generate initial conditions':
+                
+               for lineage in lineages:
+                     
+                    # Call gLV class to simulate community dynamics
+                    gLV_res = gLV(self,t_end,init_cond_func_name)
+                     
+                    # Calculate community properties, assign to class attributes
+                    gLV_res.identify_community_properties()
+                    self.assign_gLV_attributes(gLV_res, lineage)
+          
+           case 'Supply initial conditions':
+              
+               for count, lineage in enumerate(lineages):
+                   
+                   # Call gLV class to simulate community dynamics
+                   gLV_res = gLV(self,t_end,usersupplied_init_cond=array_of_init_conds[:,count])
+                     
+                   # Calculate community properties, assign to class attributes
+                   gLV_res.identify_community_properties()
+                   self.assign_gLV_attributes(gLV_res, lineage)
        
-       '''
-       
-       Simulate community dynamics/generalised Lotka-Volterra model for each lineage.
-       Initial conditions are generated using a function.
-
-       Parameters
-       ----------
-       lineages : np.array of ints
-           Index/label for lineages generated from the species pool. 
-       t_end : float
-           End of simulation.
-       init_cond_func_name : string
-           Name of function used to generate initial conditions. The default is None.
-
-       Returns
-       -------
-       None.
-
-       '''
-    
-       for lineage in lineages:
-            
-            # Call gLV class to simulate community dynamics
-            gLV_res = gLV(self,t_end,init_cond_func_name)
-            
-            # Calculate community properties, assign to class attributes
-            gLV_res.identify_community_properties(t_end)
-            self.assign_gLV_attributes(gLV_res, lineage)
-       
-       # Calculate the number of unique species compositions for the species pool
-       no_uniq_compositions, comps = self.unique_compositions()
-       
-       self.no_unique_compositions = no_uniq_compositions
-       self.unique_composition_label = {'lineage '+ str(lineage) : comp for lineage, comp in zip(lineages, comps)}
-       
-   def repeat_simulations_supply_initcond(self,lineages,t_end,array_of_init_conds):
-       
-       '''
-       
-       Simulate community dynamics/generalised Lotka-Volterra model for each lineage.
-       Initial conditions are supplied by the user.
-
-       Parameters
-       ----------
-       lineages : np.array of ints
-           Index/label for lineages generated from the species pool. 
-       t_end : float
-           End of simulation.
-       array_of_init_conds : list of np.array of floats, optional
-           Arrays of initial species abundances.
-
-       Returns
-       -------
-       None.
-
-       '''
-
-       for count, lineage in enumerate(lineages):
-           
-           # Call gLV class to simulate community dynamics
-           gLV_res = gLV(self,t_end,usersupplied_init_cond=array_of_init_conds[:,count])
-             
-           # Calculate community properties, assign to class attributes
-           gLV_res.identify_community_properties(t_end)
-           self.assign_gLV_attributes(gLV_res, lineage)
-            
        # Calculate the number of unique species compositions for the species pool
        no_uniq_compositions, comps = self.unique_compositions()
        
@@ -757,7 +698,7 @@ class community(community_parameters):
        Parameters
        ----------
        gLV_res : object of class gLV
-           DESCRIPTION.
+           gLV object/simulation results.
        lineage : int
            Lineage index/label.
 
