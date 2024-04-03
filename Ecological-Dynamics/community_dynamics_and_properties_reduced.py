@@ -48,8 +48,8 @@ class community_parameters:
     
     def __init__(self,
                  no_species,
-                 growth_func_name,growth_args,
-                 interact_func_name,interact_args,
+                 growth_func,growth_args,
+                 interact_func,interact_args,
                  usersupplied_growth,usersupplied_interactmat,
                  dispersal):
         '''
@@ -60,13 +60,13 @@ class community_parameters:
         ----------
         no_species : int
             Number of species in species pool.
-        growth_func_name : string
+        growth_func : string
             Name of function used to generate growth rates.
                 'fixed' - growth rates all equal 1,
                 'normal' - growth rates are generated from normal(mu_g,sigma_g).
         growth_args : dict.
             Arguments for function used to generate growth rates, if required.
-        interact_func_name : string
+        interact_func : string
             Name of function used to generate the interaction matrix.
                 'random' - random interaction matrix generated from normal(mu_a,sigma_a),
                 'random normalised by K' - random interaction matrix generated from 
@@ -92,7 +92,7 @@ class community_parameters:
         ############### Growth rates ####################
         
         # Select function to generate growth rates.
-        match growth_func_name:
+        match growth_func:
             
             case 'fixed':
                 
@@ -116,7 +116,7 @@ class community_parameters:
             
         ###################### Interaction Matrix #############
         
-        match interact_func_name:
+        match interact_func:
             
             case 'random':
                 
@@ -661,8 +661,8 @@ class community(community_parameters):
     
    def __init__(self,
                 no_species,
-                growth_func_name, growth_args,
-                interact_func_name, interact_args,
+                growth_func, growth_args,
+                interact_func, interact_args,
                 usersupplied_growth=None,usersupplied_interactmat=None,
                 dispersal=1e-8):
        '''
@@ -674,13 +674,13 @@ class community(community_parameters):
        ----------
        no_species : int
            Number of species in species pool.
-       growth_func_name : string
+       growth_func : string
            Name of function used to generate growth rates.
                'fixed' - growth rates all equal 1,
                'normal' - growth rates are generated from normal(mu_g,sigma_g).
        growth_args : dict.
            Arguments for function used to generate growth rates, if required.
-       interact_func_name : string
+       interact_func : string
            Name of function used to generate the interaction matrix.
                'random' - random interaction matrix generated from normal(mu_a,sigma_a),
                'random normalised by K' - random interaction matrix generated from 
@@ -702,8 +702,8 @@ class community(community_parameters):
        '''
        
        super().__init__(no_species,
-                        growth_func_name, growth_args,
-                        interact_func_name, interact_args,
+                        growth_func, growth_args,
+                        interact_func, interact_args,
                         usersupplied_growth,usersupplied_interactmat,
                         dispersal)
        
