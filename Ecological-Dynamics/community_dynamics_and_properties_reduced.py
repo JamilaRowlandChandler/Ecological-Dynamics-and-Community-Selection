@@ -446,12 +446,11 @@ class gLV:
 
         '''
         
-        t_end_minus_last20percent = 0.8*self.t_end
         t_end_minus_last30percent = 0.7*self.t_end
         
         ###### Calculate diversity-related properties ###########
         
-        final_popdyn = self.species_diversity([t_end_minus_last20percent,self.t_end])
+        final_popdyn = self.species_diversity([t_end_minus_last30percent,self.t_end])
         
         self.final_diversity = final_popdyn[1]
         self.final_composition = np.concatenate((np.where(final_popdyn[0] == True)[0],
