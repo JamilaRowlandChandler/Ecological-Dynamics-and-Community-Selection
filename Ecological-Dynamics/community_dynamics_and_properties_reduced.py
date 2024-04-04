@@ -220,7 +220,8 @@ class community_parameters:
     
     ############################### Community Function #######################
     
-    def generate_community_function(self,func_name,community_func_args=None,
+    def generate_community_function(self,func_name,
+                                    community_func_args={'mu_contribution':0,'sigma_contribution':1},
                                     usersupplied_community_function=None):
         
         '''
@@ -242,14 +243,14 @@ class community_parameters:
             case 'Generate community function':
                 
                 self.species_contribution_community_function = \
-                    self.species_contribution_to_community_function(*community_func_args)
+                    self.species_contribution_to_community_function(**community_func_args)
                 
             case None: 
                 
                 self.species_contribution_community_function = usersupplied_community_function
        
     def species_contribution_to_community_function(self,
-                                                   mu_contribution=0,sigma_contribution=1):
+                                                   mu_contribution,sigma_contribution):
         
         '''
         
@@ -297,7 +298,7 @@ class gLV:
     def __init__(self,
                  community_parameters_object,
                  t_end,
-                 init_cond_func_name=None,
+                 init_cond_func=None,
                  usersupplied_init_cond=None):
         
         '''
@@ -309,7 +310,7 @@ class gLV:
             community parameters.
         t_end : float
             End of simulation.
-        init_cond_func_name : string
+        init_cond_func : string
             Name of function used to generate initial species abundances.
                 'Hu' - function from Hu et al. (2022),
                 'Mallmin' - function from Mallmin et al. (unpublished).
@@ -334,7 +335,7 @@ class gLV:
         ######## Generate initial species abundances ###########
         
         # Select function used to generate initial species abundances.
-        match init_cond_func_name:
+        match init_cond_func:
             
             case 'Hu':
                 
@@ -595,27 +596,13 @@ class gLV:
         return proportion_fluctuating_reinvading_species
     
     ############# Community function ################
-        
+    
     def call_community_function(self,community_parameters_object):
-        '''
-        
-        Estimate community function, if required.
-
-        Parameters
-        ----------
-        community_parameters_object : object of class community_parameters.
-            community parameters.
-
-        Returns
-        -------
-        None.
-
-        '''
         
         self.species_contribution_community_function = \
             community_parameters_object.species_contribution_community_function
-        
-        self.community_function = self.community_function_totalled_over_maturation()
+            
+        self.community_function_totalled_over_maturation()
       
     def community_function_totalled_over_maturation(self):
         
@@ -637,10 +624,8 @@ class gLV:
         
         summed_abundances = np.sum(self.ODE_sol.y,axis=1)
         
-        community_function = np.sum(np.multiply(self.species_contribute_community_function,
+        self.community_function = np.sum(np.multiply(self.species_contribution_community_function,
                                                 summed_abundances))
-        
-        return community_function
         
 ################
 
@@ -737,7 +722,7 @@ class community(community_parameters):
       
    def simulate_community(self,
                           lineages,t_end,func_name,
-                          init_cond_func_name=None,array_of_init_conds=None,
+                          init_cond_func=None,array_of_init_conds=None,
                           with_community_function=False):
        
        '''
@@ -751,14 +736,14 @@ class community(community_parameters):
            End of simulation.
        func_name : string
            Name of function used to supply initial conditions.
-               'Default' : Use a function, supplied by init_cond_func_name, to
+               'Default' : Use a function, supplied by init_cond_func, to
                    generate different initial species abundances for each lineage.
                'Supply initial conditions' : The user supplies initial species
                    abundances for each lineage.
        lineages : np.array of ints
            Index/label for lineages generated from the species pool. 
            Typically generated from np.arange or np.linspace.
-       init_cond_func_name : string, optional
+       init_cond_func : string, optional
            Name of function used to generate initial conditions, if the user selects
                'Default'. The default is None.
        array_of_init_conds : list of np.array of floats, optional
@@ -783,16 +768,16 @@ class community(community_parameters):
                for lineage in lineages:
                      
                     # Call gLV class to simulate community dynamics
-                    gLV_res = gLV(self,t_end,init_cond_func_name)
+                    gLV_res = gLV(self,t_end,init_cond_func)
                      
                     # Calculate community properties, assign to class attributes
-                    gLV_res.identify_community_properties(t_end)
+                    gLV_res.identify_community_properties()
                     self.assign_gLV_attributes(gLV_res, lineage)
                     
                     if with_community_function:
                         
                         # Calculate community community function, assign to class attributes
-                        gLV_res.call_community_function(self.species_contribute_community_function)
+                        gLV_res.call_community_function(self)
                         self.assign_community_function(gLV_res, lineage)
           
            case 'Supply initial conditions':
@@ -803,15 +788,15 @@ class community(community_parameters):
                    gLV_res = gLV(self,t_end,usersupplied_init_cond=array_of_init_conds[:,count])
                      
                    # Calculate community properties, assign to class attributes
-                   gLV_res.identify_community_properties(t_end)
+                   gLV_res.identify_community_properties()
                    self.assign_gLV_attributes(gLV_res, lineage)
                    
                    if with_community_function:
                        
                        # Calculate community community function, assign to class attributes
-                       gLV_res.call_community_function(self.species_contribute_community_function)
+                       gLV_res.call_community_function(self)
                        self.assign_community_function(gLV_res, lineage)
-       
+         
        # Calculate the number of unique species compositions for the species pool
        no_uniq_compositions, comps = self.unique_compositions()
        
@@ -853,6 +838,29 @@ class community(community_parameters):
        
        # Assign community invasibility from species pool
        self.invasibilities[dict_key] = gLV_res.invasibility
+       
+   def assign_community_function(self,gLV_res,lineage):
+       '''
+       
+       Assign community function
+
+       Parameters
+       ----------
+       community_function : float
+           community function.
+       lineage : int
+           lineage label.
+
+       Returns
+       -------
+       None.
+
+       '''
+       
+       dict_key = "lineage " + str(lineage)
+       
+       self.community_functions[dict_key] = gLV_res.community_function
+       
             
    def unique_compositions(self):
        

@@ -48,8 +48,8 @@ class community_parameters:
     
     def __init__(self,
                  no_species,
-                 growth_func_name,growth_args,
-                 interact_func_name,interact_args,
+                 growth_func,growth_args,
+                 interact_func,interact_args,
                  usersupplied_growth,usersupplied_interactmat,
                  dispersal):
         '''
@@ -60,13 +60,13 @@ class community_parameters:
         ----------
         no_species : int
             Number of species in species pool.
-        growth_func_name : string
+        growth_func : string
             Name of function used to generate growth rates.
                 'fixed' - growth rates all equal 1,
                 'normal' - growth rates are generated from normal(mu_g,sigma_g).
         growth_args : dict.
             Arguments for function used to generate growth rates, if required.
-        interact_func_name : string
+        interact_func : string
             Name of function used to generate the interaction matrix.
                 'random' - random interaction matrix generated from normal(mu_a,sigma_a),
                 'random normalised by K' - random interaction matrix generated from 
@@ -92,7 +92,7 @@ class community_parameters:
         ############### Growth rates ####################
         
         # Select function to generate growth rates.
-        match growth_func_name:
+        match growth_func:
             
             case 'fixed':
                 
@@ -116,7 +116,7 @@ class community_parameters:
             
         ###################### Interaction Matrix #############
         
-        match interact_func_name:
+        match interact_func:
             
             case 'random':
                 
@@ -218,6 +218,71 @@ class community_parameters:
         
         return interact_mat
     
+    ############################### Community Function #######################
+    
+    def generate_community_function(self,func_name,
+                                    community_func_args={'mu_contribution':0,'sigma_contribution':1},
+                                    usersupplied_community_function=None):
+        
+        '''
+        
+        Generate or assign community function.
+        
+        Parameters
+        ----------
+        usersupplied_community_function : None or np.array, size (no_species,).
+            User-supplied array of species contribution to community function, default None.
+            
+        Returns
+        -------
+        None
+        '''
+        
+        match func_name:
+            
+            case 'Generate community function':
+                
+                self.species_contribution_community_function = \
+                    self.species_contribution_to_community_function(**community_func_args)
+                
+            case None: 
+                
+                self.species_contribution_community_function = usersupplied_community_function
+       
+    def species_contribution_to_community_function(self,
+                                                   mu_contribution,sigma_contribution):
+        
+        '''
+        
+        Generate parameters for species contribution to community function, or species function.
+            Inspired by Chang et al. (2021), "Engineering complex communities by directed evolution".
+            All species had a fixed species function, rather than community function
+            being emergent from dynamic mechanistic interactions.
+            Species contribution to community function is drawn from 
+            normal(mu_contribution,sigma_contribution)
+            
+        Parameters
+        ----------
+        no_species : int
+            Number of species.
+        mean_contribution : float
+            Mean species function.
+        function_std : float
+            Standard deviation for species function.
+        
+        Returns
+        -------
+        species_function : np.array of floats, size (no_species,)
+            Array of individual species functions, drawn from distribution normal(0,function_std).
+        
+        '''
+        
+        species_function = mu_contribution + sigma_contribution*np.random.randn(self.no_species)
+        
+        return species_function
+
+################
+    
 ################
 
 class gLV:
@@ -233,7 +298,7 @@ class gLV:
     def __init__(self,
                  community_parameters_object,
                  t_end,
-                 init_cond_func_name=None,
+                 init_cond_func=None,
                  usersupplied_init_cond=None):
         
         '''
@@ -242,10 +307,10 @@ class gLV:
         Parameters
         ----------
         community_parameters_object : object of class community_parameters.
-            ...
+            community parameters.
         t_end : float
             End of simulation.
-        init_cond_func_name : string
+        init_cond_func : string
             Name of function used to generate initial species abundances.
                 'Hu' - function from Hu et al. (2022),
                 'Mallmin' - function from Mallmin et al. (unpublished).
@@ -270,7 +335,7 @@ class gLV:
         ######## Generate initial species abundances ###########
         
         # Select function used to generate initial species abundances.
-        match init_cond_func_name:
+        match init_cond_func:
             
             case 'Hu':
                 
@@ -382,12 +447,11 @@ class gLV:
 
         '''
         
-        t_end_minus_last20percent = 0.8*self.t_end
         t_end_minus_last30percent = 0.7*self.t_end
         
         ###### Calculate diversity-related properties ###########
         
-        final_popdyn = self.species_diversity([t_end_minus_last20percent,self.t_end])
+        final_popdyn = self.species_diversity([t_end_minus_last30percent,self.t_end])
         
         self.final_diversity = final_popdyn[1]
         self.final_composition = np.concatenate((np.where(final_popdyn[0] == True)[0],
@@ -530,6 +594,38 @@ class gLV:
             proportion_fluctuating_reinvading_species = 0 
             
         return proportion_fluctuating_reinvading_species
+    
+    ############# Community function ################
+    
+    def call_community_function(self,community_parameters_object):
+        
+        self.species_contribution_community_function = \
+            community_parameters_object.species_contribution_community_function
+            
+        self.community_function_totalled_over_maturation()
+      
+    def community_function_totalled_over_maturation(self):
+        
+        '''
+        
+        Parameters
+        ----------
+        species_function : np.array of floats, size (no_species,)
+            Species contribution to community function.
+        species_abundances_over_time : .y attribute from OdeResult object of scipy.integrate.solve_ivp module
+            Species abundances over time.
+
+        Returns
+        -------
+        community_function : TYPE
+            DESCRIPTION.
+
+        '''
+        
+        summed_abundances = np.sum(self.ODE_sol.y,axis=1)
+        
+        self.community_function = np.sum(np.multiply(self.species_contribution_community_function,
+                                                summed_abundances))
         
 ################
 
@@ -550,8 +646,8 @@ class community(community_parameters):
     
    def __init__(self,
                 no_species,
-                growth_func_name, growth_args,
-                interact_func_name, interact_args,
+                growth_func, growth_args,
+                interact_func, interact_args,
                 usersupplied_growth=None,usersupplied_interactmat=None,
                 dispersal=1e-8):
        '''
@@ -563,13 +659,13 @@ class community(community_parameters):
        ----------
        no_species : int
            Number of species in species pool.
-       growth_func_name : string
+       growth_func : string
            Name of function used to generate growth rates.
                'fixed' - growth rates all equal 1,
                'normal' - growth rates are generated from normal(mu_g,sigma_g).
        growth_args : dict.
            Arguments for function used to generate growth rates, if required.
-       interact_func_name : string
+       interact_func : string
            Name of function used to generate the interaction matrix.
                'random' - random interaction matrix generated from normal(mu_a,sigma_a),
                'random normalised by K' - random interaction matrix generated from 
@@ -591,8 +687,8 @@ class community(community_parameters):
        '''
        
        super().__init__(no_species,
-                        growth_func_name, growth_args,
-                        interact_func_name, interact_args,
+                        growth_func, growth_args,
+                        interact_func, interact_args,
                         usersupplied_growth,usersupplied_interactmat,
                         dispersal)
        
@@ -620,11 +716,14 @@ class community(community_parameters):
        # % species that fluctuate and can reinvade the community
        self.invasibilities = {}
        
+       self.community_functions = {}
+       
    ########################
       
    def simulate_community(self,
                           lineages,t_end,func_name,
-                          init_cond_func_name=None,array_of_init_conds=None):
+                          init_cond_func=None,array_of_init_conds=None,
+                          with_community_function=False):
        
        '''
        
@@ -637,27 +736,30 @@ class community(community_parameters):
            End of simulation.
        func_name : string
            Name of function used to supply initial conditions.
-               'Default' : Use a function, supplied by init_cond_func_name, to
+               'Default' : Use a function, supplied by init_cond_func, to
                    generate different initial species abundances for each lineage.
                'Supply initial conditions' : The user supplies initial species
                    abundances for each lineage.
        lineages : np.array of ints
            Index/label for lineages generated from the species pool. 
            Typically generated from np.arange or np.linspace.
-       init_cond_func_name : string, optional
+       init_cond_func : string, optional
            Name of function used to generate initial conditions, if the user selects
                'Default'. The default is None.
        array_of_init_conds : list of np.array of floats, optional
            Arrays of initial species abundances, if the user selects 'Supply 
                initial conditions'. The default is None.
+       with_community_function : Boolean, optional
+           Choose to calculate community function alongside other community properties.
+               The default is False.
 
        Returns
        -------
        None.
 
        '''
-       
-       ################ Generate initial species abundances and simulate lineage dynamics ##################
+
+       ################ Generate initial species abundances and simulate lineage dynamics #############
        
        match func_name:
             
@@ -666,11 +768,17 @@ class community(community_parameters):
                for lineage in lineages:
                      
                     # Call gLV class to simulate community dynamics
-                    gLV_res = gLV(self,t_end,init_cond_func_name)
+                    gLV_res = gLV(self,t_end,init_cond_func)
                      
                     # Calculate community properties, assign to class attributes
                     gLV_res.identify_community_properties()
                     self.assign_gLV_attributes(gLV_res, lineage)
+                    
+                    if with_community_function:
+                        
+                        # Calculate community community function, assign to class attributes
+                        gLV_res.call_community_function(self)
+                        self.assign_community_function(gLV_res, lineage)
           
            case 'Supply initial conditions':
               
@@ -682,7 +790,13 @@ class community(community_parameters):
                    # Calculate community properties, assign to class attributes
                    gLV_res.identify_community_properties()
                    self.assign_gLV_attributes(gLV_res, lineage)
-       
+                   
+                   if with_community_function:
+                       
+                       # Calculate community community function, assign to class attributes
+                       gLV_res.call_community_function(self)
+                       self.assign_community_function(gLV_res, lineage)
+         
        # Calculate the number of unique species compositions for the species pool
        no_uniq_compositions, comps = self.unique_compositions()
        
@@ -724,6 +838,29 @@ class community(community_parameters):
        
        # Assign community invasibility from species pool
        self.invasibilities[dict_key] = gLV_res.invasibility
+       
+   def assign_community_function(self,gLV_res,lineage):
+       '''
+       
+       Assign community function
+
+       Parameters
+       ----------
+       community_function : float
+           community function.
+       lineage : int
+           lineage label.
+
+       Returns
+       -------
+       None.
+
+       '''
+       
+       dict_key = "lineage " + str(lineage)
+       
+       self.community_functions[dict_key] = gLV_res.community_function
+       
             
    def unique_compositions(self):
        
