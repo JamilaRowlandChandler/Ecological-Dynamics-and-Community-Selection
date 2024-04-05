@@ -26,6 +26,7 @@ from scipy.integrate import solve_ivp
 from scipy import stats
 from scipy.signal import find_peaks
 from scipy.signal import peak_prominences
+from scipy import linalg
 
 from copy import deepcopy
 
@@ -128,6 +129,16 @@ class community_parameters:
                 # Generate interaction matrix 
                 self.interaction_matrix = self.random_interaction_matrix()
                 
+            case 'sparse':
+                
+                for key, value in interact_args.items():
+                    
+                    # Assign interaction matrix function arguments as class attributes.
+                    setattr(self,key,value)
+                    
+                # Generate interaction matrix 
+                self.interaction_matrix = self.sparse_interaction_matrix()
+            
             case None:
                 
                 # Assign interaction matrix using the user-supplied interaction matrix, if supplied.
@@ -217,6 +228,91 @@ class community_parameters:
         np.fill_diagonal(interact_mat, 1)
         
         return interact_mat
+    
+    def sparse_interaction_matrix(self):
+        
+        '''
+        
+        Generate a sparse random interaction matrix using a Erdős–Rnyi graph.
+    
+        Returns
+        -------
+        interact_mat : np.array of size (n,n)
+            Interaction matrix. 
+    
+        '''
+        
+        # generate interaction matrix drawn from normal(mu_a,sigma_a)
+        interaction_strengths = self.mu_a + self.sigma_a*np.random.randn(self.no_species,self.no_species)
+        
+        are_species_interacting = np.random.binomial(n=1, p=self.connectance,
+                                                     size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+        
+        interact_mat = interaction_strengths * are_species_interacting
+        # set a_ij = -1 for i = j/self-interaction to prevent divergence
+        np.fill_diagonal(interact_mat, 1)
+        
+        return interact_mat
+    
+    def modular_interaction_matrix(self):
+        
+        '''
+        
+        Generate a modular interaction matrix using a stochastic block model.
+
+        Returns
+        -------
+        interact_mat : np.array of size (n,n)
+            Interaction matrix. 
+
+        '''
+        
+        ########### Cluster species into modules ##########
+        
+        if self.module_probabilites:
+            
+            clustered_species = np.random.multinomial(self.no_species,
+                                                      self.module_probabilities,
+                                                      size=1)[0]
+
+        else:
+        
+            clustered_species = np.random.multinomial(self.no_species,
+                                                      np.repeat(1/self.no_modules,self.no_modules),
+                                                      size=1)[0]
+        
+        module_interactions_list = [self.mu_a + self.sigma_a*np.random.randn(size,size) \
+                                    for size in clustered_species]
+            
+        interact_mat = linalg.block_diag(*module_interactions_list)
+        
+        ####### Assign interactions between members of different groups ######
+        
+        non_group_interaction_indices = np.where(interact_mat == 0)
+        
+        non_group_interaction_strengths = \
+            (self.mu_a + self.sigma_a*np.random.randn(self.no_species,self.no_species))
+            
+        are_species_interacting = np.random.binomial(n=1, p=self.connectance,
+                                                     size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+        
+        non_group_interactions = non_group_interaction_strengths * are_species_interacting        
+        
+        interact_mat[non_group_interaction_indices] = non_group_interactions[non_group_interaction_indices]
+        
+        ############### Self-inhibition ################
+            
+        np.fill_diagonal(interact_mat, 1)
+        
+        return interact_mat
+    
+    def nested_interaction_matrix(self):
+        
+        pass
+    
+    def kernal_interaction_matrix(self):
+        
+        pass
     
     ############################### Community Function #######################
     
@@ -554,31 +650,33 @@ class gLV:
         # If there are species with fluctuating dynamics present
         if fluctuating_species.size > 0:
             
-            # find if and where species abundances dip below baseline_abundance.
-            # Column 0 = species, column 1 = index of the timepoint where their 
+            # get final index of simulation window
+            end_index = len(t_start_index)-1
+            
+            # # find if and where species abundances dip below baseline_abundance.
+            # Tuple entry 0 = species, Tuple entry 1 = index of the timepoint where their 
             #   abundances dipped below baseline_abundance.
-            when_fluctuating_species_are_lost = np.argwhere(self.ODE_sol.y[fluctuating_species,t_start_index[0]:] \
+            when_fluctuating_species_are_lost = np.nonzero(self.ODE_sol.y[fluctuating_species,t_start_index[0]:] \
                                                             < baseline_abundance)
-             
-            # If species abundances dip below baseline_abundance
-            if when_fluctuating_species_are_lost.size > 0:
+            
+            # If species abundances dip below baseline_abundance   
+            if len(when_fluctuating_species_are_lost[0]) > 0:
             
                 # Identify the species with abundances that dip below baseline_abundance
-                unique_species, index = np.unique(when_fluctuating_species_are_lost[:,0],
-                                                  return_index=True)
+                #   and the first entry where the unique species was identified.
+                unique_species, index = \
+                    np.unique(when_fluctuating_species_are_lost[0],return_index=True)
                 
-                when_fluctuating_species_are_lost = when_fluctuating_species_are_lost[index,:]
+                # get the final index of each species 
+                final_index = np.append(index[1:],len(when_fluctuating_species_are_lost[1])) - 1
                 
-                # Identify whether the species with abundances that dip below 
-                #   baseline_abundance reinvade at a later timepoint.
-                reinvading_species = np.array([np.any(self.ODE_sol.y[\
-                                            fluctuating_species[when_fluctuating_species_are_lost[i,0]],
-                                             (t_start_index[0] + when_fluctuating_species_are_lost[i,1]):] \
-                                                      > baseline_abundance) for i in \
-                                               range(when_fluctuating_species_are_lost.shape[0])])
-                    
-                proportion_fluctuating_reinvading_species = np.sum(reinvading_species)/len(extant_species)
+                # count number of reinvading species
+                # if the final index is less than end_index, the species is reinvading/increasing above baseline_abundance.
+                no_reinvading_species = np.count_nonzero(when_fluctuating_species_are_lost[1][final_index] < end_index)
                 
+                # calculate the proportion of extant species that can reinvade the system
+                proportion_fluctuating_reinvading_species = no_reinvading_species/len(extant_species)
+            
             # If no species abundances dip below baseline_abundance, the proportion 
             #   of species that can reinvade the system (proportion_fluctuating_reinvading_species)
             #   is set to 0.
