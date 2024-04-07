@@ -416,7 +416,7 @@ class community_parameters:
     
     ############################### Community Function #######################
     
-    def generate_community_function(self,func_name,
+    def generate_community_function(self,func_name='Generate community function',
                                     community_func_args={'mu_contribution':0,'sigma_contribution':1},
                                     usersupplied_community_function=None):
         
