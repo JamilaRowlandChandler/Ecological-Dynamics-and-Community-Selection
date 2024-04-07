@@ -7,7 +7,7 @@ Created on Wed Feb 21 10:35:29 2024
 
 ######################
 
-# Jamila: for console - cd "Documents/PhD for github/Ecological dynamics and community selection"
+# Jamila: for console - cd "Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics"
 
 #########################
 
@@ -138,6 +138,16 @@ class community_parameters:
                     
                 # Generate interaction matrix 
                 self.interaction_matrix = self.sparse_interaction_matrix()
+                
+            case 'nested':
+                
+                for key, value in interact_args.items():
+                    
+                    # Assign interaction matrix function arguments as class attributes.
+                    setattr(self,key,value)
+                    
+                # Generate interaction matrix 
+                self.interaction_matrix = self.nested_interaction_matrix()
             
             case None:
                 
@@ -234,6 +244,8 @@ class community_parameters:
         '''
         
         Generate a sparse random interaction matrix using a Erdős–Rnyi graph.
+        
+        See May (1972) for details. https://doi.org/10.1038/238413a0
     
         Returns
         -------
@@ -258,7 +270,10 @@ class community_parameters:
         
         '''
         
-        Generate a modular interaction matrix using a stochastic block model.
+        Generate a modular interaction matrix using a stochastic block model (SBM).
+        
+        See Akjouj et al. (2024) for details on how SBMs can be applied to gLVs.
+        https://doi.org/10.1098/rspa.2023.0284
 
         Returns
         -------
@@ -266,6 +281,42 @@ class community_parameters:
             Interaction matrix. 
 
         '''
+        
+        def interaction_matrix_with_connectance(n,mu_a,sigma_a,connectance):
+            
+            '''
+            
+            Generate a random interaction matric with connectance c.
+
+            Parameters
+            ----------
+            n : int
+                Number of n. 
+                (The interaction matrix describes interaction/edges between n.)
+            mu_a : float
+                Average interaction strength.
+            sigma_a : float
+                Standard deviation in interaction strength.
+            connectance : float
+                Probaility of node i and j interacting (c).
+
+            Returns
+            -------
+            interaction_matrix : np.ndarray of size (n,n).
+                Interaction matrix.
+
+            '''
+            # create the connectance matrix (whether n are interacting or not)
+            are_species_interacting = \
+                np.random.binomial(1,connectance,size=n*n).reshape((n,n))
+            
+            # create the interaction strength matrix
+            interaction_strengths = mu_a + sigma_a*np.random.randn(n,n)
+            
+            # create the interaction matrix
+            interaction_matrix = interaction_strengths * are_species_interacting
+            
+            return interaction_matrix
         
         ########### Cluster species into modules ##########
         
@@ -281,38 +332,87 @@ class community_parameters:
                                                       np.repeat(1/self.no_modules,self.no_modules),
                                                       size=1)[0]
         
-        module_interactions_list = [self.mu_a + self.sigma_a*np.random.randn(size,size) \
-                                    for size in clustered_species]
-            
-        interact_mat = linalg.block_diag(*module_interactions_list)
+        # create the interaction matrices for each module
+        module_interactions = \
+            [interaction_matrix_with_connectance(nodes,self.p_mu_a,self.p_sigma_a,
+                                                 self.p_connectance) \
+             for nodes in clustered_species]
+        
+        # combine module interactions into a community interaction matrix
+        interact_mat = linalg.block_diag(*module_interactions)
         
         ####### Assign interactions between members of different groups ######
         
+        # get indices of interaction matrix where species from different modules interact
         non_group_interaction_indices = np.where(interact_mat == 0)
         
-        non_group_interaction_strengths = \
-            (self.mu_a + self.sigma_a*np.random.randn(self.no_species,self.no_species))
-            
-        are_species_interacting = np.random.binomial(n=1, p=self.connectance,
-                                                     size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+        # generate the interactions between species from different modules
+        non_group_interactions = \
+            interaction_matrix_with_connectance(self.no_species,
+                                                self.q_mu_a,self.q_sigma_a,
+                                                self.q_connectance)    
         
-        non_group_interactions = non_group_interaction_strengths * are_species_interacting        
-        
-        interact_mat[non_group_interaction_indices] = non_group_interactions[non_group_interaction_indices]
+        # add between-module interactions to the interaction matrix
+        interact_mat[non_group_interaction_indices] = \
+            non_group_interactions[non_group_interaction_indices]
         
         ############### Self-inhibition ################
-            
+        
+        # set a_ij = -1 for i = j/self-interaction to prevent divergence
         np.fill_diagonal(interact_mat, 1)
         
         return interact_mat
     
-    def nested_interaction_matrix(self):
+    def nested_interaction_matrix(self,beta=7):
         
-        pass
-    
-    def kernal_interaction_matrix(self):
+        '''
         
-        pass
+        Created a nested, or scale-free, interaction matrix using the Chung-Lu model.
+        
+        See Akjouj et al. (2024) for details on how the Chung-Lu model can be
+        applied to gLVs. https://doi.org/10.1098/rspa.2023.0284
+
+        Parameters
+        ----------
+        beta : float, optional
+            Scale parameter used to describe the probabiltiy node n has k nodes.
+            The default is 7.
+
+        Returns
+        -------
+        interact_mat : np.array of size (n,n)
+            Interaction matrix. 
+
+        '''
+        
+        # create i's
+        species = np.arange(1,self.no_species+1)
+        
+        # calculate node weights, used to calculate the probability species i interacts with j.
+        weights = \
+            self.average_degree*((beta-2)/(beta-1))*((self.no_species/species)**(1/(beta-1)))
+        
+        # calculate the probability species i interacts with j.
+        probability_of_interactions = \
+            (np.outer(weights,weights)/np.sum(weights)).flatten()
+        
+        # set probabilities > 1 to 1.
+        probability_of_interactions[probability_of_interactions > 1] = 1
+        
+        # create the connectance matrix/determine whether species are interacting
+        are_species_interacting = np.random.binomial(n=1, p=probability_of_interactions,
+                                                     size=len(probability_of_interactions)).reshape((self.no_species,self.no_species))
+        
+        # create the interaction strength matrix
+        interaction_strengths = self.mu_a + self.sigma_a*np.random.randn(self.no_species,self.no_species)
+        
+        # create interaction matrix
+        interact_mat = interaction_strengths * are_species_interacting
+        
+        # set a_ij = -1 for i = j/self-interaction to prevent divergence
+        np.fill_diagonal(interact_mat, 1)
+        
+        return interact_mat
     
     ############################### Community Function #######################
     
