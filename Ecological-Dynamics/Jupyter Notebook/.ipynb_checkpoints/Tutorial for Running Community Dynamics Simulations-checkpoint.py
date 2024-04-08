@@ -4,10 +4,6 @@ Created on Wed Mar 27 10:57:46 2024
 
 @author: jamil
 """
-#################
-
-# NOTE - YOU WILL NEED TO SET YOUR WORKING DIRECTORY:
-#    cd <path to folder>/Ecological-Dynamics-and-Community-Selection-Tutorial
 
 ################ Import packages ########
 
@@ -24,8 +20,8 @@ from community_dynamics_and_properties import *
 ############ community_parameters class tutorial ##############
 
 # Example 1
-community_parameters_object = community_parameters(no_species=3, growth_func='fixed', growth_args=None,
-                                                   interact_func='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
+community_parameters_object = community_parameters(no_species=3, growth_func_name='fixed', growth_args=None,
+                                                   interact_func_name='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
                                                    usersupplied_growth=None, usersupplied_interactmat=None,
                                                    dispersal=1e-8)
 
@@ -38,8 +34,8 @@ community_parameters_object = community_parameters(no_species, 'fixed', None, 'r
                                                    None, None, 1e-8)
 
 # Example 2
-community_parameters_object = community_parameters(no_species=3, growth_func='normal', growth_args={'mu_g':1,'sigma_g':3},
-                                                   interact_func='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
+community_parameters_object = community_parameters(no_species=3, growth_func_name='normal', growth_args={'mu_g':1,'sigma_g':3},
+                                                   interact_func_name='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
                                                    usersupplied_growth=None, usersupplied_interactmat=None,
                                                    dispersal=1e-8)
 
@@ -47,7 +43,7 @@ community_parameters_object = community_parameters(no_species=3, growth_func='no
 user_growth_rates = np.array([1.1,0.7,1.5]) # growth rates = 1.1, 0.7 and 1.5
 user_interaction_matrix = np.array([[1,0.2,1.4],[0,1,0.6],[1.1,0.9,1]])
 
-community_parameters_object = community_parameters(no_species=3, growth_func=None, growth_args=None, interact_func=None, interact_args=None,
+community_parameters_object = community_parameters(no_species=3, growth_func_name=None, growth_args=None, interact_func_name=None, interact_args=None,
                                                    usersupplied_growth=user_growth_rates, usersupplied_interactmat=user_interaction_matrix,
                                                    dispersal=1e-8)
 
@@ -62,16 +58,16 @@ print('Dispersal =', community_parameters_object.dispersal, end='\n')
 ########### Simulations ###########
 
 # Example 1
-community_parameters_object = community_parameters(no_species=50, growth_func='fixed', growth_args=None,
-                                                   interact_func='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
+community_parameters_object = community_parameters(no_species=50, growth_func_name='fixed', growth_args=None,
+                                                   interact_func_name='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
                                                    usersupplied_growth=None, usersupplied_interactmat=None,
                                                    dispersal=1e-8)
 
-gLV_object = gLV(community_parameters_object, t_end=5000, init_cond_func='Mallmin')
+gLV_object = gLV(community_parameters_object, t_end=5000, init_cond_func_name='Mallmin')
 
 # Example 2
-community_parameters_object = community_parameters(no_species=50, growth_func='fixed', growth_args=None,
-                                                   interact_func='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
+community_parameters_object = community_parameters(no_species=50, growth_func_name='fixed', growth_args=None,
+                                                   interact_func_name='random', interact_args={'mu_a':0.9,'sigma_a':0.15},
                                                    usersupplied_growth=None, usersupplied_interactmat=None,
                                                    dispersal=1e-8)
 
@@ -99,19 +95,19 @@ print('Invasibility = ', gLV_object.invasibility, end='\n')
 ######################### community class tutorial #####################
 
 # Example 1
-community_dynamics = community(no_species=50, growth_func='fixed', growth_args=None, interact_func='random',
+community_dynamics = community(no_species=50, growth_func_name='fixed', growth_args=None, interact_func_name='random',
                                interact_args={'mu_a':0.9,'sigma_a':0.15}, dispersal=1e-8) # very similar to creating a community_parameters object
 
 no_lineages = 5
 community_dynamics.simulate_community(lineages=np.arange(no_lineages), t_end = 10000, func_name='Generate initial conditions',
-                                      init_cond_func ='Mallmin') # np.arange(no_lineages) generates lineage 0, lineage 1, ... lineage 4.
+                                      init_cond_func_name ='Mallmin') # np.arange(no_lineages) generates lineage 0, lineage 1, ... lineage 4.
+
 # Example 2
-community_dynamics = community(no_species=50, growth_func='fixed', growth_args=None, interact_func='random',
+community_dynamics = community(no_species=50, growth_func_name='fixed', growth_args=None, interact_func_name='random',
                                interact_args={'mu_a':0.9,'sigma_a':0.15}, dispersal=1e-8) # very similar to creating a community_parameters object
 
 no_lineages = 5
 initial_species_abundances = 0.5 + 0.3*np.random.randn(50,no_lineages) # matrix dimensions no_species x no_Lineages
-
 community_dynamics.simulate_community(lineages=np.arange(no_lineages), t_end = 10000, func_name='Supply initial conditions',
                                       array_of_init_conds=initial_species_abundances)
 
@@ -131,18 +127,6 @@ print('Species composition at the end of simulation = ', tidied_final_compositio
 
 print('Number of unique species compositions = ', community_dynamics.no_unique_compositions, end = '\n')
 print('Compositions = ', community_dynamics.unique_composition_label, end = '\n')
-
-############### Community Function ####################
-
-# Example
-community_dynamics = community(no_species=50, growth_func='fixed', growth_args=None, interact_func='random',
-                               interact_args={'mu_a':0.9,'sigma_a':0.15}, dispersal=1e-8)
-community_dynamics.generate_community_function() # generate community function
-
-no_lineages = 5
-community_dynamics.simulate_community(lineages=np.arange(no_lineages), t_end = 10000, func_name='Generate initial conditions',
-                                      init_cond_func ='Mallmin',
-                                      with_community_function=True) # include with_community_function
 
 
 

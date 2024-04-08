@@ -139,6 +139,15 @@ class community_parameters:
                 # Generate interaction matrix 
                 self.interaction_matrix = self.sparse_interaction_matrix()
                 
+            case 'modular':
+                
+                for key, value in interact_args.items():
+                    
+                    # Assign interaction matrix function arguments as class attributes.
+                    setattr(self,key,value)
+                    
+                self.interaction_matrix = self.modular_interaction_matrix()
+                
             case 'nested':
                 
                 for key, value in interact_args.items():
@@ -210,11 +219,15 @@ class community_parameters:
         return growth_r
     
         
-    ###### Interaction Matrix ######
+    ##################### Interaction Matrix #####################
+    
+    ########## Sparse and dense random interaction matrices #########
             
     def random_interaction_matrix(self):
         
         '''
+        
+        Generate a classic, dense, random interaction matrix.
     
         Parameters
         ----------
@@ -254,17 +267,38 @@ class community_parameters:
     
         '''
         
-        # generate interaction matrix drawn from normal(mu_a,sigma_a)
-        interaction_strengths = self.mu_a + self.sigma_a*np.random.randn(self.no_species,self.no_species)
-        
-        are_species_interacting = np.random.binomial(n=1, p=self.connectance,
-                                                     size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
-        
-        interact_mat = interaction_strengths * are_species_interacting
-        # set a_ij = -1 for i = j/self-interaction to prevent divergence
-        np.fill_diagonal(interact_mat, 1)
+        interact_mat =\
+            self.interaction_matrix_with_connectance(self.no_species, self.mu_a,
+                                                     self.sigma_a, self.connectance)
         
         return interact_mat
+    
+    def mixed_sparse_interaction_matrix(self):
+        
+        # generate competitive interactions to start
+        interact_mat = \
+            self.interaction_matrix_with_connectance(self.no_species,
+                                                     self.competitive_mu_a,
+                                                     self.competitive_sigma_a,
+                                                     self.competitive_connectance)
+        
+        cooperative_interaction_indices = \
+            np.random.binomial(1,self.probability_cooperative,
+                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+        
+        cooperative_interaction_matrix = \
+            self.interaction_matrix_with_connectance(cooperative_interaction_indices.shape[0],
+                                                     self.cooperative_mu_a,
+                                                     self.cooperative_sigma_a,
+                                                     self.cooperative_connectance,
+                                                     self_inhibition=False)
+        
+        interact_mat[np.where(interact_mat == cooperative_interaction_indices)] = \
+            cooperative_interaction_matrix
+            
+        return interact_mat
+    
+    ############# Non-uniform structured interaction matrices ###########
     
     def modular_interaction_matrix(self):
         
@@ -282,42 +316,6 @@ class community_parameters:
 
         '''
         
-        def interaction_matrix_with_connectance(n,mu_a,sigma_a,connectance):
-            
-            '''
-            
-            Generate a random interaction matric with connectance c.
-
-            Parameters
-            ----------
-            n : int
-                Number of n. 
-                (The interaction matrix describes interaction/edges between n.)
-            mu_a : float
-                Average interaction strength.
-            sigma_a : float
-                Standard deviation in interaction strength.
-            connectance : float
-                Probaility of node i and j interacting (c).
-
-            Returns
-            -------
-            interaction_matrix : np.ndarray of size (n,n).
-                Interaction matrix.
-
-            '''
-            # create the connectance matrix (whether n are interacting or not)
-            are_species_interacting = \
-                np.random.binomial(1,connectance,size=n*n).reshape((n,n))
-            
-            # create the interaction strength matrix
-            interaction_strengths = mu_a + sigma_a*np.random.randn(n,n)
-            
-            # create the interaction matrix
-            interaction_matrix = interaction_strengths * are_species_interacting
-            
-            return interaction_matrix
-        
         ########### Cluster species into modules ##########
         
         if self.module_probabilites:
@@ -334,7 +332,7 @@ class community_parameters:
         
         # create the interaction matrices for each module
         module_interactions = \
-            [interaction_matrix_with_connectance(nodes,self.p_mu_a,self.p_sigma_a,
+            [self.interaction_matrix_with_connectance(nodes,self.p_mu_a,self.p_sigma_a,
                                                  self.p_connectance) \
              for nodes in clustered_species]
         
@@ -348,7 +346,7 @@ class community_parameters:
         
         # generate the interactions between species from different modules
         non_group_interactions = \
-            interaction_matrix_with_connectance(self.no_species,
+            self.interaction_matrix_with_connectance(self.no_species,
                                                 self.q_mu_a,self.q_sigma_a,
                                                 self.q_connectance)    
         
@@ -356,13 +354,8 @@ class community_parameters:
         interact_mat[non_group_interaction_indices] = \
             non_group_interactions[non_group_interaction_indices]
         
-        ############### Self-inhibition ################
-        
-        # set a_ij = -1 for i = j/self-interaction to prevent divergence
-        np.fill_diagonal(interact_mat, 1)
-        
         return interact_mat
-    
+
     def nested_interaction_matrix(self,beta=7):
         
         '''
@@ -399,20 +392,64 @@ class community_parameters:
         # set probabilities > 1 to 1.
         probability_of_interactions[probability_of_interactions > 1] = 1
         
-        # create the connectance matrix/determine whether species are interacting
-        are_species_interacting = np.random.binomial(n=1, p=probability_of_interactions,
-                                                     size=len(probability_of_interactions)).reshape((self.no_species,self.no_species))
-        
-        # create the interaction strength matrix
-        interaction_strengths = self.mu_a + self.sigma_a*np.random.randn(self.no_species,self.no_species)
-        
-        # create interaction matrix
-        interact_mat = interaction_strengths * are_species_interacting
-        
-        # set a_ij = -1 for i = j/self-interaction to prevent divergence
-        np.fill_diagonal(interact_mat, 1)
+        interact_mat = \
+            self.interaction_matrix_with_connectance(self.no_species,
+                                                     self.mu_a, self.sigma_a,
+                                                     probability_of_interactions)
         
         return interact_mat
+    
+    def modular_mixed_interaction_matrix():
+        
+        pass
+    
+    def nested_mixed_interaction_matrix():
+        
+        pass
+    
+    ########### Extra functions for generating interaction matrices #####
+    
+    def interaction_matrix_with_connectance(self,n,mu_a,sigma_a,connectance,
+                                            self_inhibition=True):
+        
+        '''
+        
+        Generate a random interaction matric with connectance c.
+
+        Parameters
+        ----------
+        n : int
+            Number of n. 
+            (The interaction matrix describes interaction/edges between n.)
+        mu_a : float
+            Average interaction strength.
+        sigma_a : float
+            Standard deviation in interaction strength.
+        connectance : float
+            Probability of node i and j interacting (c).
+
+        Returns
+        -------
+        interaction_matrix : np.ndarray of size (n,n).
+            Interaction matrix.
+
+        '''
+        # create the connectance matrix (whether n are interacting or not)
+        are_species_interacting = \
+            np.random.binomial(1,connectance,size=n*n).reshape((n,n))
+        
+        # create the interaction strength matrix
+        interaction_strengths = mu_a + sigma_a*np.random.randn(n,n)
+        
+        # create the interaction matrix
+        interaction_matrix = interaction_strengths * are_species_interacting
+        
+        if self_inhibition == True:
+            
+            # set a_ij = -1 for i = j/self-interaction to prevent divergence
+            np.fill_diagonal(interaction_matrix, 1)
+        
+        return interaction_matrix
     
     ############################### Community Function #######################
     
@@ -1127,6 +1164,19 @@ def gLV_ode_with_extinction_threshold(t,spec,growth_r,interact_mat,dispersal,
     spec[spec < extinct_thresh] = 0 # set species abundances below extinction threshold to 0
     
     dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
+    
+    return dSdt
+
+def gLV_ode_separate_mixed_interactions(t,spec,
+                                        growth_r,competitive_mat,cooperative_mat,
+                                        gamma,dispersal,extinct_thresh=1e-9):
+    
+    spec[spec < extinct_thresh] = 0 # set species abundances below extinction threshold to 0
+    
+    competition = np.matmul(competitive_mat,spec)
+    cooperation = np.matmul(cooperative_mat,spec/(gamma+spec))
+    
+    dSdt = np.multiply(1 + cooperation - competition, growth_r*spec) + dispersal
     
     return dSdt
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Mar  5 11:41:56 2024
+Created on Thu Mar  7 13:20:11 2024
 
-@author: Jamila
+@author: jamil
 """
 
 import numpy as np
@@ -10,131 +10,88 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import seaborn as sns
 from copy import deepcopy
-from scipy.stats import linregress
-from scipy.stats import pearsonr
 import itertools
-
-import statsmodels.api as sm
-from statsmodels.formula.api import ols
-from statsmodels.stats.anova import anova_lm
-from statsmodels.stats.multicomp import pairwise_tukeyhsd
-from statsmodels.discrete.discrete_model import MNLogit
 
 from community_dynamics_and_properties_v2 import *
 
 #################################################
 
-community_dynamics_dict = pd.read_pickle('community_dynamics_different_no_species.pkl')
-community_dynamics_df = pd.read_csv('community_dynamics_different_no_species.csv',index_col=False)
+def community_simulations_fixed_std(std):
 
-min_species = 4
-max_species = 50
-no_species_to_test = np.arange(min_species,max_species,3)
-
-no_communities = 6
-no_lineages = 5
-interaction_distribution = {'mu_a':0.9,'sigma_a':0.15}
-t_end = 10000
-
-community_dynamics_with_invasibility = {}
-
-for no_species, community_per_species in community_dynamics_dict.items():
+    community_dynamics_invasibility = {}
     
-    print(str(no_species),end='\n')
-    community_no_spec = []
+    min_species = 4
+    max_species = 50
+    no_species_to_test = np.arange(min_species,max_species,3)
     
-    for i, community_i in enumerate(community_per_species):
-        
-        community_extracted = deepcopy(community_i)
-        new_community_simulations = community(community_extracted.no_species,
-                                            'fixed',None,None,
-                                            {'mu_a':community_extracted.mu_a,'sigma_a':community_extracted.sigma_a},
-                                            usersupplied_interactmat=community_extracted.interaction_matrix)
-        new_community_simulations.simulate_community(t_end,'Default',np.arange(no_lineages),
-                                              init_cond_func_name='Mallmin')
-        
-        community_no_spec.append(new_community_simulations)
-        print('Community ',str(i),' simulations are complete.',end='\n')
-        
-    community_dynamics_with_invasibility[str(no_species)] = community_no_spec
-
-################################
-
-no_species_column = np.repeat(no_species_to_test,no_communities*no_lineages)
-community_column = np.tile(np.repeat(np.arange(no_communities),no_lineages),len(no_species_to_test))
-lineage_column = np.tile(np.tile(np.arange(no_lineages),no_communities),len(no_species_to_test))
-invasibility_column = []
-diversity_column = []
-
-#################### Dataframe construction and analysis ##################
-
-for no_species, community_per_species in community_dynamics_with_invasibility.items():
+    interaction_distributions = generate_distribution([0.1,1.1], [std,std+0.04])
     
-    for i, community_i in enumerate(community_per_species):
+    no_communities = 10
+    no_lineages = 5
+    t_end = 10000
+    
+    for interact_dist in interaction_distributions:
         
-        community_extracted = deepcopy(community_i)
+        print(interact_dist)
         
-        diversity_column.append(list(community_extracted.diversity.values()))
-        invasibility_column.append(list(community_extracted.invasibilities.values()))
+        community_dynamics_interact_dist = {}
+        
+        for no_species in no_species_to_test:
+            
+            print(str(no_species) + ' species')
+        
+            def generate_and_simulate_communities(interact_dist,no_species,no_lineages,t_end):
+                
+                community_dynamics = community(no_species,"fixed", None,'random',
+                                               interact_dist)
+                community_dynamics.simulate_community(t_end,"Default",np.arange(no_lineages),
+                                                      init_cond_func_name="Mallmin")
+                
+                return deepcopy(community_dynamics)
+            
+            communities = [generate_and_simulate_communities(interact_dist,no_species,no_lineages,t_end) \
+             for comm in range(no_communities)] 
+        
+            community_dynamics_interact_dist[(str(no_species) + ' species')] = communities
+        
+        community_dynamics_invasibility[str(interact_dist['mu_a']) + str(interact_dist['sigma_a'])] = \
+            community_dynamics_interact_dist
+            
+    return community_dynamics_invasibility
 
-community_dynamics_invasibility_df = pd.DataFrame(np.stack((no_species_column,community_column,
-                                               lineage_column,np.concatenate(invasibility_column),
-                                               np.concatenate(diversity_column))).T,
-                                     columns=['No_Species','Community','Lineage',
-                                              'Invasibility','Diversity'])
+community_dynamics_invasibility_005 = community_simulations_fixed_std(0.05)
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_2.pkl",
+            community_dynamics_invasibility_005)        
 
-community_dynamics_invasibility_df.to_csv('community_dynamics_with_invasibility.csv')
-pickle_dump('community_dynamics_with_invasibility.pkl',community_dynamics_with_invasibility)
+community_dynamics_invasibility_01 = community_simulations_fixed_std(0.1)
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_2.pkl",
+            community_dynamics_invasibility_01)        
+        
+community_dynamics_invasibility_015 = community_simulations_fixed_std(0.15)
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_015_2.pkl",
+            community_dynamics_invasibility_015)        
 
-sns.set_style('white')
-norm = plt.Normalize(community_dynamics_invasibility_df['Invasibility'].min(),
-                     community_dynamics_invasibility_df['Invasibility'].max())
-sm = plt.cm.ScalarMappable(cmap="viridis_r", norm=norm)
-ax = sns.scatterplot(community_dynamics_invasibility_df,x='No_Species',y='Diversity',
-                hue='Invasibility',palette=sns.color_palette("viridis_r",n_colors=100,as_cmap=True))
-plt.xlabel('Initial number of species',fontsize=14)
-plt.ylabel('Species diversity at the \n end of simulations',fontsize=14)
-ax.get_legend().remove()
-clb = plt.colorbar(sm, ax=ax)
-clb.ax.set_title('Invasibility',pad=6)
-plt.title('Effect of invasibility on species diversity',fontsize=16,pad=20)
+community_dynamics_invasibility_02 = community_simulations_fixed_std(0.2)
+pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_02_2.pkl",
+            community_dynamics_invasibility_02)        
+        
 
-###########################
 
-community_dynamics_invasibility_df2 = pd.read_csv('community_dynamics_with_invasibility.csv',
-                                                 index_col=False)
-community_dynamics_with_invasibility2 = pd.read_pickle('community_dynamics_with_invasibility.pkl')
 
-sns.set_style('white')
-norm = plt.Normalize(community_dynamics_invasibility_df2['Invasibility'].min(),
-                     community_dynamics_invasibility_df2['Invasibility'].max())
-sm = plt.cm.ScalarMappable(cmap="viridis_r", norm=norm)
-ax = sns.scatterplot(community_dynamics_invasibility_df2,x='No_Species',y='Diversity',
-                hue='Invasibility',palette=sns.color_palette("viridis_r",n_colors=100,as_cmap=True))
-plt.xlabel('Initial number of species',fontsize=14)
-plt.ylabel('Species diversity at the \n end of simulations',fontsize=14)
-ax.get_legend().remove()
-clb = plt.colorbar(sm, ax=ax)
-clb.ax.set_title('Invasibility',pad=6)
-plt.title('Effect of invasibility on species diversity',fontsize=16,pad=20)
 
-plt.savefig("Figures/diversity_no_species_invasibility.png", dpi=300, bbox_inches='tight')
 
-#######################
 
-sns.scatterplot(community_dynamics_invasibility_df,x='No_Species',y='Diversity',
-                hue='Invasibility')
 
-res_diversity = ols('Diversity ~ No_Species + Invasibility',data=community_dynamics_invasibility_df).fit()
-print(res_diversity.summary())
-print(anova_lm(res_diversity))
 
-diversity_predicted = res_diversity.predict(community_dynamics_invasibility_df[['No_Species','Invasibility']])
 
-sns.scatterplot(x=community_dynamics_invasibility_df['Diversity'],y=diversity_predicted)
 
-pearsonr(community_dynamics_invasibility_df['Diversity'],diversity_predicted)
 
-sns.scatterplot(community_dynamics_invasibility_df,x='No_Species',y='Diversity',
-                hue='Invasibility')
-plt.plot(community_dynamics_invasibility_df['No_Species'],diversity_predicted,'x')
+
+
+
+
+
+
+
+
+      
