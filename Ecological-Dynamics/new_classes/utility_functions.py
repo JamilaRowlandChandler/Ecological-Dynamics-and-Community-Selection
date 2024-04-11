@@ -172,7 +172,10 @@ def community_object_to_df(community_object,
                          community_attributes=['mu_a','sigma_a','no_species',
                                                'no_unique_compositions','unique_composition_label',
                                                'diversity','invasibilities'],
-                         community_label=0):
+                         community_label=0,
+                         column_names=['mu_a','sigma_a','no_species',
+                                       'no_unique_compositions','unique_composition_label',
+                                       'diversity','invasibilities']):
     
     no_lineages = len(community_object.ODE_sols)
     
@@ -212,8 +215,8 @@ def community_object_to_df(community_object,
     attribute_columns = [community_col] + [lineage_col] + \
         [extract_attribute_make_df_col(community_object, attribute_name) \
              for attribute_name in community_attributes]
-        
-    col_names = ['community','lineage'] + community_attributes
+            
+    col_names = ['community','lineage'] + column_names
         
     ############# Convert lists to df ################
     
