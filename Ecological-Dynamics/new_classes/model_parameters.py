@@ -247,6 +247,80 @@ class ParametersInterface:
         
         pass
     
+    def strong_compete_weak_parasitise(self):
+        
+        min_growth = np.min(self.growth_rates)
+        max_growth = np.max(self.growth_rates)
+        
+        probability_interaction = \
+            (self.growth_rates - min_growth)/(max_growth-min_growth)
+        
+        are_species_interacting = \
+            np.random.binomial(1,
+                               np.tile(probability_interaction,self.no_species),
+                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+            
+        probability_cooperation = np.zeros((self.no_species,self.no_species))
+
+        for i in range(50):
+            for j in range(50):
+                probability_cooperation[i,j] = \
+                    ((self.growth_rates[i] - self.growth_rates[j])**2)/(self.growth_rates[i] * self.growth_rates[j])
+        
+        probability_cooperation = probability_cooperation.flatten()
+        probability_cooperation[probability_cooperation > 1] = 1
+        
+        interaction_type_matrix = \
+            np.random.binomial(1,
+                               probability_cooperation,
+                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+    
+        interaction_type_matrix[np.where(interaction_type_matrix == 0)] = -1
+    
+        are_species_interacting[np.where(are_species_interacting == 1)] = \
+            interaction_type_matrix[np.where(are_species_interacting == 1)]
+
+        interact_mat = are_species_interacting
+        
+        competitive_interactions = np.where(interact_mat == -1)
+        cooperative_interactions = np.where(interact_mat == 1)
+        
+        interact_mat[competitive_interactions] = \
+            self.mu_comp + self.sigma_comp*np.random.randn(len(competitive_interactions))
+        
+        interact_mat[cooperative_interactions] = \
+            self.mu_coop + self.sigma_coop*np.random.randn(len(competitive_interactions))
+        
+        return interact_mat
+    
+    def competition_scaled_with_growth(self,mu_a,sigma_a,connectance):
+        
+        min_growth = np.min(self.growth_rates)
+        max_growth = np.max(self.growth_rates)
+        
+        weights = self.growth_rates # maybe come up with a better function
+        
+        # calculate the probability species i interacts with j.
+        probability_of_interactions = \
+            (np.outer(weights,weights)/np.sum(weights)).flatten()
+        
+        # set probabilities > 1 to 1.
+        probability_of_interactions[probability_of_interactions > 1] = 1
+            
+        interact_mat = \
+            self.interaction_matrix_with_connectance(self.no_species,mu_a,sigma_a,
+                                                     probability_of_interactions)
+        
+        return interact_mat
+    
+    def cooperation_scaled_with_growth(self,mu_a,sigma_a,connectance):
+        
+        min_growth = np.min(self.growth_rates)
+        max_growth = np.max(self.growth_rates)
+        
+        pass
+        
+        
     ########### Extra functions for generating interaction matrices #####
     
     def interaction_matrix_with_connectance(self,n,mu_a,sigma_a,connectance,
