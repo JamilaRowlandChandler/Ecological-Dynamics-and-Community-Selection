@@ -193,7 +193,8 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
             '''
             spec[spec < extinct_thresh] = 0 # set species abundances below extinction threshold to 0
             
-            dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
+            #dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
+            dSdt = np.multiply(growth_r - np.matmul(interact_mat,spec), spec) + dispersal
             
             return dSdt
         
@@ -256,7 +257,7 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
             
                 # Generate interaction matrix 
                 self.competition_matrix = \
-                    self.sparse_interaction_matrix(self.mu_comp,self.sigma_a)
+                    self.sparse_interaction_matrix(self.mu_comp,self.sigma_comp,self.connectance_comp)
                 
             case 'modular':
                 
@@ -292,13 +293,14 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
                     
                 # Generate interaction matrix 
                 self.cooperation_matrix = \
-                    self.random_interaction_matrix(self.mu_coop,self.sigma_coop)
+                    self.random_interaction_matrix(self.mu_coop,self.sigma_coop,self_interaction=0)
                 
             case 'sparse':
             
                 # Generate interaction matrix 
                 self.cooperation_matrix = \
-                    self.sparse_interaction_matrix(self.mu_coop,self.sigma_a)
+                    self.sparse_interaction_matrix(self.mu_coop,self.sigma_coop,self.connectance_coop,
+                                                   self_interaction=0)
                 
             case 'modular':
                 
@@ -306,13 +308,13 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
                     self.modular_interaction_matrix(self.p_mu_coop,self.p_sigma_coop,
                                                     self.p_connectance,
                                                     self.q_mu_coop,self.q_sigma_coop,
-                                                    self.q_connectance)
+                                                    self_interaction=0)
                 
             case 'nested':
 
                 # Generate interaction matrix 
                 self.cooperation_matrix = \
-                    self.nested_interaction_matrix(self.mu_coop,self.sigma_a)
+                    self.nested_interaction_matrix(self.mu_coop,self.sigma_a,self_interaction=0)
             
             case None:
                 
@@ -367,11 +369,12 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
             competition = np.matmul(competitive_mat,spec)
             cooperation = np.matmul(cooperative_mat,spec/(gamma+spec))
             
-            dSdt = np.multiply(1 + cooperation - competition, growth_r*spec) + dispersal
+            #dSdt = np.multiply(1 + cooperation - competition, growth_r*spec) + dispersal
+            dSdt = np.multiply(growth_r + cooperation - competition, spec) + dispersal
             
             return dSdt
         
-        return solve_ivp(gLV_allee_ODE,[0,self.t_end],self.initial_abundances,
+        return solve_ivp(gLV_allee_ODE,[0,self.t_end],initial_abundance,
                          args=(self.growth_rates,self.competition_matrix,
-                               self.cooperation_matrix,1,self.dispersal),
+                               self.cooperation_matrix,10,self.dispersal),
                          method='RK45',t_eval=np.linspace(0,self.t_end,200))

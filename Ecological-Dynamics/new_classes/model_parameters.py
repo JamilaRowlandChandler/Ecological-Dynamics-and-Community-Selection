@@ -65,7 +65,7 @@ class ParametersInterface:
     
     ########## Sparse and dense random interaction matrices #########
             
-    def random_interaction_matrix(self,mu_a,sigma_a):
+    def random_interaction_matrix(self,mu_a,sigma_a,self_interaction=1):
         
         '''
         
@@ -90,11 +90,12 @@ class ParametersInterface:
         # generate interaction matrix drawn from normal(mu_a,sigma_a)
         interact_mat = mu_a + sigma_a*np.random.randn(self.no_species,self.no_species)
         # set a_ij = -1 for i = j/self-interaction to prevent divergence
-        np.fill_diagonal(interact_mat, 1)
+        
+        np.fill_diagonal(interact_mat,self_interaction)
         
         return interact_mat
     
-    def sparse_interaction_matrix(self,mu_a,sigma_a,connectance):
+    def sparse_interaction_matrix(self,mu_a,sigma_a,connectance,self_interaction=1):
         
         '''
         
@@ -111,7 +112,7 @@ class ParametersInterface:
         
         interact_mat =\
             self.interaction_matrix_with_connectance(self.no_species, mu_a,
-                                                sigma_a, connectance)
+                                                sigma_a, connectance,self_interaction)
         
         return interact_mat
     
@@ -122,7 +123,8 @@ class ParametersInterface:
             self.interaction_matrix_with_connectance(self.no_species,
                                                      self.competitive_mu_a,
                                                      self.competitive_sigma_a,
-                                                     self.competitive_connectance)
+                                                     self.competitive_connectance,
+                                                     self_interaction=1)
         
         cooperative_interaction_indices = \
             np.random.binomial(1,self.probability_cooperative,
@@ -133,7 +135,7 @@ class ParametersInterface:
                                                      self.cooperative_mu_a,
                                                      self.cooperative_sigma_a,
                                                      self.cooperative_connectance,
-                                                     self_inhibition=False)
+                                                     self_interaction=0)
         
         interact_mat[np.where(interact_mat == cooperative_interaction_indices)] = \
             cooperative_interaction_matrix
@@ -143,7 +145,7 @@ class ParametersInterface:
     ############# Non-uniform structured interaction matrices ###########
     
     def modular_interaction_matrix(self,p_mu_a,p_sigma_a,p_connectance,
-                                   q_mu_a,q_sigma_a,q_connectance):
+                                   q_mu_a,q_sigma_a,q_connectance,self_interaction=1):
         
         '''
         
@@ -175,7 +177,7 @@ class ParametersInterface:
       
         # create the interaction matrices for each module
         module_interactions = \
-            [self.interaction_matrix_with_connectance(nodes,p_mu_a,p_sigma_a,p_connectance)
+            [self.interaction_matrix_with_connectance(nodes,p_mu_a,p_sigma_a,p_connectance,self_interaction)
              for nodes in clustered_species]
         
         # combine module interactions into a community interaction matrix
@@ -189,7 +191,7 @@ class ParametersInterface:
         # generate the interactions between species from different modules
         non_group_interactions = \
             self.interaction_matrix_with_connectance(self.no_species,
-                                                     q_mu_a,q_sigma_a,q_connectance)    
+                                                     q_mu_a,q_sigma_a,q_connectance,self_interaction)    
         
         # add between-module interactions to the interaction matrix
         interact_mat[non_group_interaction_indices] = \
@@ -197,7 +199,7 @@ class ParametersInterface:
         
         return interact_mat
     
-    def nested_interaction_matrix(self,mu_a,sigma_a,beta=7):
+    def nested_interaction_matrix(self,mu_a,sigma_a,beta=7,self_interaction=1):
         
         '''
         
@@ -235,7 +237,7 @@ class ParametersInterface:
         
         interact_mat = \
             self.interaction_matrix_with_connectance(self.no_species,mu_a,sigma_a,
-                                                     probability_of_interactions)
+                                                     probability_of_interactions,self_interaction)
         
         return interact_mat
     
@@ -247,7 +249,7 @@ class ParametersInterface:
         
         pass
     
-    def strong_compete_weak_parasitise(self):
+    def competition_scaled_with_growth(self,max_a,sigma_a):
         
         min_growth = np.min(self.growth_rates)
         max_growth = np.max(self.growth_rates)
@@ -256,75 +258,68 @@ class ParametersInterface:
             (self.growth_rates - min_growth)/(max_growth-min_growth)
         
         are_species_interacting = \
-            np.random.binomial(1,
-                               np.tile(probability_interaction,self.no_species),
+            np.random.binomial(1,np.tile(probability_interaction,self.no_species),
                                size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+        
+        ################################
+        
+        def interaction_strength(growth_i,growth_j,
+                                 max_a,sigma_a,niche_width=0.5):
             
-        probability_cooperation = np.zeros((self.no_species,self.no_species))
+            expected_interaction_strength = max_a*np.exp(-((growth_i - growth_j)**2)/(2*niche_width^2))
+            
+            actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
+            
+            return actual_interaction_strength
+            
+        growth_rates_i, growth_rates_j = np.meshgrid(self.growth_rates,self.growth_rates)
 
-        for i in range(50):
-            for j in range(50):
-                probability_cooperation[i,j] = \
-                    ((self.growth_rates[i] - self.growth_rates[j])**2)/(self.growth_rates[i] * self.growth_rates[j])
-        
-        probability_cooperation = probability_cooperation.flatten()
-        probability_cooperation[probability_cooperation > 1] = 1
-        
-        interaction_type_matrix = \
-            np.random.binomial(1,
-                               probability_cooperation,
-                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
-    
-        interaction_type_matrix[np.where(interaction_type_matrix == 0)] = -1
-    
-        are_species_interacting[np.where(are_species_interacting == 1)] = \
-            interaction_type_matrix[np.where(are_species_interacting == 1)]
+        interaction_strengths = interaction_strength(growth_rates_i,growth_rates_j,
+                                                     max_a,sigma_a)
 
-        interact_mat = are_species_interacting
-        
-        competitive_interactions = np.where(interact_mat == -1)
-        cooperative_interactions = np.where(interact_mat == 1)
-        
-        interact_mat[competitive_interactions] = \
-            self.mu_comp + self.sigma_comp*np.random.randn(len(competitive_interactions))
-        
-        interact_mat[cooperative_interactions] = \
-            self.mu_coop + self.sigma_coop*np.random.randn(len(competitive_interactions))
+        interact_mat = are_species_interacting * interaction_strengths
+        np.fill_diagonal(interact_mat, 1)
         
         return interact_mat
     
-    def competition_scaled_with_growth(self,mu_a,sigma_a,connectance):
+    def cooperation_scaled_with_growth(self,max_a,sigma_a):
         
         min_growth = np.min(self.growth_rates)
         max_growth = np.max(self.growth_rates)
         
-        weights = self.growth_rates # maybe come up with a better function
+        probability_interaction = \
+            (self.growth_rates - min_growth)/(max_growth-min_growth)
         
-        # calculate the probability species i interacts with j.
-        probability_of_interactions = \
-            (np.outer(weights,weights)/np.sum(weights)).flatten()
+        are_species_interacting = \
+            np.random.binomial(1,np.tile(probability_interaction,self.no_species),
+                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
         
-        # set probabilities > 1 to 1.
-        probability_of_interactions[probability_of_interactions > 1] = 1
+        ################################
+        
+        def interaction_strength(growth_i,growth_j,
+                                 max_a,sigma_a,niche_width=0.5):
             
-        interact_mat = \
-            self.interaction_matrix_with_connectance(self.no_species,mu_a,sigma_a,
-                                                     probability_of_interactions)
+            expected_interaction_strength = \
+                max_a / (1 + np.exp(-(growth_j - growth_i)/(niche_width)))
+            
+            actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
+            
+            return actual_interaction_strength
+            
+        growth_rates_i, growth_rates_j = np.meshgrid(self.growth_rates,self.growth_rates)
+
+        interaction_strengths = interaction_strength(growth_rates_i,growth_rates_j,
+                                                     max_a,sigma_a)
+
+        interact_mat = are_species_interacting * interaction_strengths
+        np.fill_diagonal(interact_mat, 0)
         
         return interact_mat
-    
-    def cooperation_scaled_with_growth(self,mu_a,sigma_a,connectance):
-        
-        min_growth = np.min(self.growth_rates)
-        max_growth = np.max(self.growth_rates)
-        
-        pass
-        
         
     ########### Extra functions for generating interaction matrices #####
     
     def interaction_matrix_with_connectance(self,n,mu_a,sigma_a,connectance,
-                                            self_inhibition=True):
+                                            self_interaction):
         
         '''
         
@@ -358,10 +353,7 @@ class ParametersInterface:
         # create the interaction matrix
         interaction_matrix = interaction_strengths * are_species_interacting
         
-        if self_inhibition == True:
-            
-            # set a_ij = -1 for i = j/self-interaction to prevent divergence
-            np.fill_diagonal(interaction_matrix, 1)
+        np.fill_diagonal(interaction_matrix, self_interaction)
         
         return interaction_matrix
     
