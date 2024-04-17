@@ -82,7 +82,8 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
         
                 # Generate interaction matrix 
                 self.interaction_matrix = \
-                    self.nested_interaction_matrix(self.mu_a,self.sigma_a)
+                    self.nested_interaction_matrix(self.mu_a,self.sigma_a,
+                                                   self.average_degree)
                     
             case None:
                         
@@ -271,7 +272,8 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
 
                 # Generate interaction matrix 
                 self.competition_matrix = \
-                    self.nested_interaction_matrix(self.mu_comp,self.sigma_a)
+                    self.nested_interaction_matrix(self.mu_comp,self.sigma_comp,
+                                                   self.average_degree_comp)
             
             case None:
                 
@@ -314,7 +316,9 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
 
                 # Generate interaction matrix 
                 self.cooperation_matrix = \
-                    self.nested_interaction_matrix(self.mu_coop,self.sigma_a,self_interaction=0)
+                    self.nested_interaction_matrix(self.mu_coop,self.sigma_comp,
+                                                   self.average_degree_coop,
+                                                   self_interaction=0)
             
             case None:
                 
@@ -376,5 +380,5 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
         
         return solve_ivp(gLV_allee_ODE,[0,self.t_end],initial_abundance,
                          args=(self.growth_rates,self.competition_matrix,
-                               self.cooperation_matrix,10,self.dispersal),
+                               self.cooperation_matrix,1,self.dispersal),
                          method='RK45',t_eval=np.linspace(0,self.t_end,200))

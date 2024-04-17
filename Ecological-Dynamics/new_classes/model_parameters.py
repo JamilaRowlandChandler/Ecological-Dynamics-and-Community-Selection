@@ -199,7 +199,8 @@ class ParametersInterface:
         
         return interact_mat
     
-    def nested_interaction_matrix(self,mu_a,sigma_a,beta=7,self_interaction=1):
+    def nested_interaction_matrix(self,mu_a,sigma_a,average_degree,
+                                  beta=7,self_interaction=1):
         
         '''
         
@@ -226,7 +227,7 @@ class ParametersInterface:
         
         # calculate node weights, used to calculate the probability species i interacts with j.
         weights = \
-            self.average_degree*((beta-2)/(beta-1))*((self.no_species/species)**(1/(beta-1)))
+            average_degree*((beta-2)/(beta-1))*((self.no_species/species)**(1/(beta-1)))
         
         # calculate the probability species i interacts with j.
         probability_of_interactions = \
@@ -262,6 +263,52 @@ class ParametersInterface:
                                size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
         
         ################################
+        
+        def interaction_strength(growth_i,growth_j,
+                                 max_a,sigma_a,niche_width=0.5):
+            
+            expected_interaction_strength = max_a*np.exp(-((growth_i - growth_j)**2)/(2*niche_width^2))
+            
+            actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
+            
+            return actual_interaction_strength
+            
+        growth_rates_i, growth_rates_j = np.meshgrid(self.growth_rates,self.growth_rates)
+
+        interaction_strengths = interaction_strength(growth_rates_i,growth_rates_j,
+                                                     max_a,sigma_a)
+
+        interact_mat = are_species_interacting * interaction_strengths
+        np.fill_diagonal(interact_mat, 1)
+        
+        return interact_mat
+    
+    def alternative_competition_scaled_with_growth(self,max_a,sigma_a,average_degree,
+                                                   beta=7,self_interaction=1):
+        
+        # create i's
+        species = np.arange(1,self.no_species+1)
+        
+        # calculate node weights, used to calculate the probability species i interacts with j.
+        weights = \
+            average_degree*((beta-2)/(beta-1))*((self.no_species/species)**(1/(beta-1)))
+        
+        # sort growth rates
+        indices_sorted_growth_rates = np.flip(np.argsort(self.growth_rates))
+        
+        weights_reordered_by_growth = weights[indices_sorted_growth_rates]
+        
+        # calculate the probability species i interacts with j.
+        probability_of_interactions = \
+            (np.outer(weights_reordered_by_growth,
+                      weights_reordered_by_growth)/np.sum(weights_reordered_by_growth)).flatten()
+        
+        # set probabilities > 1 to 1.
+        probability_of_interactions[probability_of_interactions > 1] = 1
+        
+        are_species_interacting = \
+            np.random.binomial(1,np.tile(probability_of_interactions,self.no_species),
+                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
         
         def interaction_strength(growth_i,growth_j,
                                  max_a,sigma_a,niche_width=0.5):

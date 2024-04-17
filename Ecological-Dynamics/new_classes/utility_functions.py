@@ -171,11 +171,9 @@ def mean_std_deviation(data):
 def community_object_to_df(community_object,
                          community_attributes=['mu_a','sigma_a','no_species',
                                                'no_unique_compositions','unique_composition_label',
-                                               'diversity','invasibilities'],
+                                               'diversity','invasibility'],
                          community_label=0,
-                         column_names=['mu_a','sigma_a','no_species',
-                                       'no_unique_compositions','unique_composition_label',
-                                       'diversity','invasibilities']):
+                         column_names=None):
     
     no_lineages = len(community_object.ODE_sols)
     
@@ -216,7 +214,13 @@ def community_object_to_df(community_object,
         [extract_attribute_make_df_col(community_object, attribute_name) \
              for attribute_name in community_attributes]
             
-    col_names = ['community','lineage'] + column_names
+    if column_names:
+            
+        col_names = ['community','lineage'] + column_names
+        
+    else:
+        
+        col_names = ['community','lineage'] + community_attributes
         
     ############# Convert lists to df ################
     

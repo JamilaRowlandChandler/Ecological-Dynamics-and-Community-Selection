@@ -9,6 +9,7 @@ import numpy as np
 from copy import deepcopy
 from scipy.signal import find_peaks
 from scipy.signal import peak_prominences
+import sys
 
 from utility_functions import *
 
@@ -16,9 +17,11 @@ from utility_functions import *
 
 class CommunityPropertiesInterface:
     
-    def calculate_community_properties(self,lineages):
+    def calculate_community_properties(self,lineages,from_which_time):
         
-        t_end_minus_last30percent = 0.7*self.t_end
+        if self.t_end < from_which_time:
+            
+            raise Exception("Start time must be less than the end of simulation.")
         
         ###### Calculate diversity-related properties ###########
         
@@ -29,7 +32,7 @@ class CommunityPropertiesInterface:
             lineage_key = 'lineage ' + str(lineage)
             
             final_popdyn = \
-                self.species_diversity(lineage_key,[t_end_minus_last30percent,self.t_end])
+                self.species_diversity(lineage_key,[from_which_time,self.t_end])
                 
             self.final_composition[lineage_key] = final_popdyn[0]
             self.final_diversity[lineage_key] = final_popdyn[1]
@@ -38,7 +41,7 @@ class CommunityPropertiesInterface:
        
         self.invasibility = \
             {'lineage ' + str(lineage) : self.detect_invasibility('lineage ' + str(lineage),
-                                                                  t_end_minus_last30percent) \
+                                                                  from_which_time) \
                  for lineage in lineages}
         
         # Calculate the number of unique species compositions for the species pool
@@ -141,20 +144,17 @@ class CommunityPropertiesInterface:
         
         # Identify which of the extant species have "fluctuating dynamics".
         fluctuating_species = extant_species[np.logical_not(np.isnan([self.find_normalised_peaks(self.ODE_sols[lineage].y[spec,t_start_index])[0] \
-                                for spec in extant_species]))]
+                                for spec in extant_species]))] # THIS IS KINDA WRONG
         
         # If there are species with fluctuating dynamics present
         if fluctuating_species.size > 0:
             
-            # get final index of simulation window
-            end_index = len(t_start_index)-1
-            
             # # find if and where species abundances dip below baseline_abundance.
             # Tuple entry 0 = species, Tuple entry 1 = index of the timepoint where their 
             #   abundances dipped below baseline_abundance.
-            when_fluctuating_species_are_lost = np.nonzero(self.ODE_sols[lineage].y[fluctuating_species,t_start_index[0]:] \
-                                                            < baseline_abundance)
-            
+            when_fluctuating_species_are_lost = np.nonzero(self.ODE_sols[lineage].y[fluctuating_species,:] \
+                                                            < baseline_abundance) # THIS IS VERY WRONG
+                
             # If species abundances dip below baseline_abundance   
             if len(when_fluctuating_species_are_lost[0]) > 0:
             
@@ -162,13 +162,14 @@ class CommunityPropertiesInterface:
                 #   and the first entry where the unique species was identified.
                 unique_species, index = \
                     np.unique(when_fluctuating_species_are_lost[0],return_index=True)
-                
-                # get the final index of each species 
-                final_index = np.append(index[1:],len(when_fluctuating_species_are_lost[1])) - 1
-                
+                    
+                reinvading_species = np.array([np.any(self.ODE_sols[lineage].y[\
+                                            fluctuating_species[when_fluctuating_species_are_lost[0][i]],
+                                             when_fluctuating_species_are_lost[1][i]:] \
+                                                      > baseline_abundance) for i in index])
+                                               
                 # count number of reinvading species
-                # if the final index is less than end_index, the species is reinvading/increasing above baseline_abundance.
-                no_reinvading_species = np.count_nonzero(when_fluctuating_species_are_lost[1][final_index] < end_index)
+                no_reinvading_species = np.sum(reinvading_species)
                 
                 # calculate the proportion of extant species that can reinvade the system
                 proportion_fluctuating_reinvading_species = no_reinvading_species/len(extant_species)
