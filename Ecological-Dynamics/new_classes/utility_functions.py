@@ -171,7 +171,7 @@ def mean_std_deviation(data):
 def community_object_to_df(community_object,
                          community_attributes=['mu_a','sigma_a','no_species',
                                                'no_unique_compositions','unique_composition_label',
-                                               'diversity','invasibility'],
+                                               'final_diversity','invasibility'],
                          community_label=0,
                          column_names=None):
     

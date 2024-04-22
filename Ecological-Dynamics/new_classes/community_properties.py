@@ -84,13 +84,13 @@ class CommunityPropertiesInterface:
         # find species that aren't extinct aka species with abundances greater than the extinction threshold.
         present_species = \
             np.any(simulations_copy.y[:self.no_species,indices[0]:indices[1]] > extinct_thresh,
-                                 axis=1)
+                   axis=1)
         
         # calculate species diversity (aka no. of species that aren't extinct, 
         #   or the length of the array of present species abundances)
-        diversity = np.sum(present_species)
+        diversity = np.count_nonzero(present_species)
          
-        return [present_species,diversity]
+        return [present_species.nonzero()[0],diversity]
     
     def detect_invasibility(self,lineage,t_start,extinct_thresh=1e-4):
         
