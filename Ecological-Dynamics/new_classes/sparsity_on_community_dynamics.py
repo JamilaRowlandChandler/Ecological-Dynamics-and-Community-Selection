@@ -73,7 +73,7 @@ def sparsity_effect_community_dynamics(i,connectances,
     
     return output
 
-connectances = np.array([0.1,0.3,0.5,0.8])
+connectances = np.array([0.1,0.3,0.5,0.8,0.9])
 
 species_range = np.arange(20,55,5)
 
@@ -86,16 +86,173 @@ no_lineages = 5
 no_communities = 5
 no_sparse_communities = 5
 
-#community_dynamics_with_sparsity = \
-#    {str(i_d['mu_a']) + str(i_d['sigma_a']) : {
-#        str(no_species) : {
-#            str('Community ') + str(i) : sparsity_effect_community_dynamics(i,connectances,
-#                                                   no_species,i_d['mu_a'],i_d['sigma_a'],
-#                                                   no_lineages,no_sparse_communities) \
-#                for i in range(no_communities)}
-#            for no_species in species_range}
-#        for i_d in interaction_distributions}
+community_dynamics_with_sparsity = \
+    {str(i_d['mu_a']) + str(i_d['sigma_a']) : {
+        str(no_species) : {
+            str('Community ') + str(i) : sparsity_effect_community_dynamics(i,connectances,
+                                                   no_species,i_d['mu_a'],i_d['sigma_a'],
+                                                   no_lineages,no_sparse_communities) \
+                for i in range(no_communities)}
+            for no_species in species_range}
+        for i_d in interaction_distributions}
             
+        
+pickle_dump('C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_sparsity.pkl',
+            community_dynamics_with_sparsity)
+
+###########################################################################################################
+
+def custom_nested_matrix(random_interaction_matrix,average_degree,beta=7):
+    
+    n = random_interaction_matrix.shape[0]
+    
+    #############################
+    
+    # create i's
+    species = np.arange(1,n+1)
+    
+    # calculate node weights, used to calculate the probability species i interacts with j.
+    weights = \
+        average_degree*((beta-2)/(beta-1))*((n/species)**(1/(beta-1)))
+    
+    # calculate the probability species i interacts with j.
+    probability_of_interactions = \
+        (np.outer(weights,weights)/np.sum(weights)).flatten()
+    
+    # set probabilities > 1 to 1.
+    probability_of_interactions[probability_of_interactions > 1] = 1
+    
+    are_species_interacting = \
+        np.random.binomial(1,probability_of_interactions,size=n*n).reshape((n,n))
+    
+    interact_mat = random_interaction_matrix * are_species_interacting
+    
+    np.fill_diagonal(interact_mat, 1)
+    
+    return interact_mat
+    
+    
+def degree_effect_community_dynamics(i,average_proportion_of_species_interacted,
+                                       no_species,mu_a,sigma_a,no_lineages,
+                                       no_nested_communities):
+    
+    print({'Community':i,'mu_a':mu_a,'sigma_a':sigma_a,
+           'no_species':no_species}, end = '\n')
+    
+    gLV_dense = gLV(no_species = no_species, growth_func = 'fixed', growth_args = None,
+                   interact_func = 'random',interact_args = {'mu_a':mu_a,'sigma_a':sigma_a})
+    gLV_dense.simulate_community(np.arange(no_lineages),t_end=10000)
+    gLV_dense.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
+    
+    average_degrees = no_species * average_proportion_of_species_interacted
+    
+    def same_interaction_strength_different_average_degree(average_degree,no_nested_communities):
+        
+        def create_and_simulate_nested_community():
+            
+            nested_interactmat = custom_nested_matrix(gLV_dense.interaction_matrix,average_degree)
+        
+            gLV_nested = gLV(no_species = no_species, growth_func = 'fixed', growth_args = None,
+                           interact_func = None,interact_args = {'mu_a':mu_a,'sigma_a':sigma_a,
+                           'average_degree':average_degree},
+                           usersupplied_interactmat = nested_interactmat)
+            gLV_nested.simulate_community(np.arange(no_lineages),t_end=10000)
+            gLV_nested.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
+    
+            return deepcopy(gLV_nested)
+        
+        gLV_nested_communities = [create_and_simulate_nested_community() \
+                                  for i in range(no_nested_communities)]
+            
+        return gLV_nested_communities
+    
+    output = {str(average_degree) : \
+              same_interaction_strength_different_average_degree(average_degree,no_nested_communities) \
+              for average_degree in average_degrees}
+        
+    output['1.0'] = deepcopy(gLV_dense)
+    
+    return output
+
+###########################################
+
+average_proportion_of_species_interacted = np.array([0.05,0.1,0.3,0.5,0.8,0.9])
+
+species_range = np.arange(20,55,5)
+
+interaction_distributions = [{'mu_a':0.7,'sigma_a':0.15},{'mu_a':0.7,'sigma_a':0.2},
+                             {'mu_a':0.9,'sigma_a':0.1},{'mu_a':0.9,'sigma_a':0.2},
+                             {'mu_a':1,'sigma_a':0.1},{'mu_a':1,'sigma_a':0.2},
+                             {'mu_a':1.2,'sigma_a':0.1},{'mu_a':1.2,'sigma_a':0.2}]
+
+no_lineages = 5
+no_communities = 5
+no_nested_communities = 5
+
+community_dynamics_with_nestedness = \
+    {str(i_d['mu_a']) + str(i_d['sigma_a']) : {
+        str(no_species) : {
+            str('Community ') + str(i) : degree_effect_community_dynamics(i,average_proportion_of_species_interacted,
+                                                   no_species,i_d['mu_a'],i_d['sigma_a'],
+                                                   no_lineages,no_nested_communities) \
+                for i in range(no_communities)}
+            for no_species in species_range}
+        for i_d in interaction_distributions}
+            
+pickle_dump('C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_nestedness.pkl',
+            community_dynamics_with_nestedness)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 community_dynamics_with_sparsity_01 = \
     {str(i_d['mu_a']) + str(i_d['sigma_a']) : {
         str(no_species) : {
