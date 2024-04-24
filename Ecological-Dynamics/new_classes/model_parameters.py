@@ -307,13 +307,13 @@ class ParametersInterface:
         probability_of_interactions[probability_of_interactions > 1] = 1
         
         are_species_interacting = \
-            np.random.binomial(1,np.tile(probability_of_interactions,self.no_species),
+            np.random.binomial(1,probability_of_interactions,
                                size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
         
         def interaction_strength(growth_i,growth_j,
                                  max_a,sigma_a,niche_width=0.5):
             
-            expected_interaction_strength = max_a*np.exp(-((growth_i - growth_j)**2)/(2*niche_width^2))
+            expected_interaction_strength = max_a*np.exp(-((growth_i - growth_j)**2)/(2*niche_width**2))
             
             actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
             

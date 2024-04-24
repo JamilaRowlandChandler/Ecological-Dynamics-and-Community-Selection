@@ -42,7 +42,12 @@ def sparsity_effect_community_dynamics(i,connectances,
     
     gLV_dense = gLV(no_species = no_species, growth_func = 'fixed', growth_args = None,
                    interact_func = 'random',interact_args = {'mu_a':mu_a,'sigma_a':sigma_a})
-    gLV_dense.simulate_community(np.arange(no_lineages),t_end=10000)
+    gLV_dense.simulate_community(np.arange(no_lineages),t_end=5000)
+    
+    initial_abundances = np.vstack([ode_sol.y[:,-1] for ode_sol in gLV_dense.ODE_sols.values()])
+    
+    gLV_dense.simulate_community(np.arange(no_lineages),t_end = 10000,init_cond_func=None,
+                                     usersupplied_init_conds=initial_abundances.T)
     gLV_dense.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
     
     def same_interaction_strength_different_connectance(connectance,no_sparse_communities):
@@ -55,9 +60,14 @@ def sparsity_effect_community_dynamics(i,connectances,
                            interact_func = None,interact_args = {'mu_a':mu_a,'sigma_a':sigma_a,
                            'connectance':connectance},
                            usersupplied_interactmat = sparse_interactmat)
-            gLV_sparse.simulate_community(np.arange(no_lineages),t_end=10000)
+            gLV_sparse.simulate_community(np.arange(no_lineages),t_end=5000)
+            
+            initial_abundances = np.vstack([ode_sol.y[:,-1] for ode_sol in gLV_sparse.ODE_sols.values()])
+            
+            gLV_sparse.simulate_community(np.arange(no_lineages),t_end = 10000,init_cond_func=None,
+                                             usersupplied_init_conds=initial_abundances.T)
             gLV_sparse.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
-    
+            
             return deepcopy(gLV_sparse)
         
         gLV_sparse_communities = [create_and_simulate_sparse_community() \
@@ -141,9 +151,14 @@ def degree_effect_community_dynamics(i,average_proportion_of_species_interacted,
     
     gLV_dense = gLV(no_species = no_species, growth_func = 'fixed', growth_args = None,
                    interact_func = 'random',interact_args = {'mu_a':mu_a,'sigma_a':sigma_a})
-    gLV_dense.simulate_community(np.arange(no_lineages),t_end=10000)
-    gLV_dense.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
+    gLV_dense.simulate_community(np.arange(no_lineages),t_end=5000)
     
+    initial_abundances = np.vstack([ode_sol.y[:,-1] for ode_sol in gLV_dense.ODE_sols.values()])
+    
+    gLV_dense.simulate_community(np.arange(no_lineages),t_end = 10000,init_cond_func=None,
+                                     usersupplied_init_conds=initial_abundances.T)
+    gLV_dense.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
+ 
     average_degrees = no_species * average_proportion_of_species_interacted
     
     def same_interaction_strength_different_average_degree(average_degree,no_nested_communities):
@@ -156,9 +171,14 @@ def degree_effect_community_dynamics(i,average_proportion_of_species_interacted,
                            interact_func = None,interact_args = {'mu_a':mu_a,'sigma_a':sigma_a,
                            'average_degree':average_degree},
                            usersupplied_interactmat = nested_interactmat)
-            gLV_nested.simulate_community(np.arange(no_lineages),t_end=10000)
+            gLV_nested.simulate_community(np.arange(no_lineages),t_end=5000)
+            
+            initial_abundances = np.vstack([ode_sol.y[:,-1] for ode_sol in gLV_nested.ODE_sols.values()])
+            
+            gLV_nested.simulate_community(np.arange(no_lineages),t_end = 10000,init_cond_func=None,
+                                             usersupplied_init_conds=initial_abundances.T)
             gLV_nested.calculate_community_properties(np.arange(no_lineages),from_which_time=7000)
-    
+         
             return deepcopy(gLV_nested)
         
         gLV_nested_communities = [create_and_simulate_nested_community() \
@@ -253,31 +273,8 @@ pickle_dump('C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dyn
 
 
 
-community_dynamics_with_sparsity_01 = \
-    {str(i_d['mu_a']) + str(i_d['sigma_a']) : {
-        str(no_species) : {
-            str('Community ') + str(i) : sparsity_effect_community_dynamics(i,connectances,
-                                                   no_species,i_d['mu_a'],i_d['sigma_a'],
-                                                   no_lineages,no_sparse_communities) \
-                for i in range(no_communities)}
-            for no_species in species_range}
-        for i_d in interaction_distributions[4:6]}
-        
-pickle_dump('C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_with_sparsity_01.pkl',
-            community_dynamics_with_sparsity_01)
-           
-community_dynamics_with_sparsity_012 = \
-    {str(i_d['mu_a']) + str(i_d['sigma_a']) : {
-        str(no_species) : {
-            str('Community ') + str(i) : sparsity_effect_community_dynamics(i,connectances,
-                                                   no_species,i_d['mu_a'],i_d['sigma_a'],
-                                                   no_lineages,no_sparse_communities) \
-                for i in range(no_communities)}
-            for no_species in species_range}
-        for i_d in interaction_distributions[6:]}
+
  
-pickle_dump('C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_with_sparsity_012.pkl',
-            community_dynamics_with_sparsity_012)
 
 for community_dynamics_with_sparsity in [community_dynamics_with_sparsity_01,community_dynamics_with_sparsity_012]:
     for key0, communities_i_d in community_dynamics_with_sparsity.items():
