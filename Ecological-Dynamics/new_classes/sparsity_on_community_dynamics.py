@@ -105,7 +105,6 @@ community_dynamics_with_sparsity = \
                 for i in range(no_communities)}
             for no_species in species_range}
         for i_d in interaction_distributions}
-            
         
 pickle_dump('C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_sparsity.pkl',
             community_dynamics_with_sparsity)
@@ -140,7 +139,6 @@ def custom_nested_matrix(random_interaction_matrix,average_degree,beta=7):
     np.fill_diagonal(interact_mat, 1)
     
     return interact_mat
-    
     
 def degree_effect_community_dynamics(i,average_proportion_of_species_interacted,
                                        no_species,mu_a,sigma_a,no_lineages,
