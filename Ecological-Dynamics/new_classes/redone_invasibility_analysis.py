@@ -13,6 +13,7 @@ from copy import deepcopy
 import seaborn as sns
 import matplotlib as mpl
 from matplotlib import pyplot as plt
+from itertools import chain
 
 from model_classes import gLV
 
@@ -171,3 +172,117 @@ plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dyna
             dpi=300,bbox_inches='tight')
 
 ###########################################
+
+colourmap_base = mpl.colormaps['plasma_r'](0.99)
+light_dark_range = np.linspace(0.85,0,256)
+lighten_func = lambda val, i : val + i*(1-val)
+colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
+                for i in light_dark_range]
+cmap = mpl.colors.ListedColormap(colours_list)
+norm = mpl.colors.PowerNorm(2.1, vmin = 0, vmax = 1)
+sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+sns.set_style('white')
+
+fig, ax = plt.subplots(1,1,sharex=True,sharey=True,figsize=(9,7),layout='constrained')
+
+clb = plt.colorbar(sm,ax=ax,shrink=0.8,pad=0.1)
+clb.ax.set_title('Invasibility',fontsize=18,
+                 pad=7.5)
+
+subfig = sns.scatterplot(data=communities_dynamics_df.iloc[np.where((communities_dynamics_df['sigma_a'] == 0.15) & \
+                                                           (communities_dynamics_df['mu_a'] == 0.9))],
+                      x='no_species',y='final_diversity',hue='invasibility',
+                      ax=ax,palette=cmap,hue_norm=sm.norm,s=80,edgecolor='black',
+                      linewidth=0.5)
+subfig.set_xlabel('Species pool size',fontsize=20)
+subfig.set_ylabel('Species diversity (at t = 7000-10000)',fontsize=20)
+subfig.set_title('Invasibility is a good measure of \n ecological dynamics',fontsize=28,
+                 pad=10)
+subfig.set_xticks(np.arange(np.min(communities_dynamics_df['no_species']),
+                            np.max(communities_dynamics_df['no_species'])+3,3))
+ax.set_ylim([0,np.max(communities_dynamics_df['no_species'])])
+ax.get_legend().remove()
+sns.despine()
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/invasibility_good_metric.png",
+            dpi=300,bbox_inches='tight')
+
+################## Retesting fluctuation coefficient ######################
+
+def detect_fluctuations(gLV_object,lineages,from_which_time):
+    
+    fluct_prop_lineages = \
+        [fluctuation_coefficient(gLV_object.ODE_sols['lineage ' + str(lineage)],from_which_time)
+             for lineage in lineages]
+    
+    return fluct_prop_lineages
+
+def fluctuation_coefficient(ode_sol,from_which_time,fluctuation_thresh = 5e-2):
+    
+    t_start_index = np.where(ode_sol.t >= from_which_time)[0]
+    
+    average_variation_coeff_per_spec = \
+        np.std(ode_sol.y[:,t_start_index],axis=1)/np.mean(ode_sol.y[:,t_start_index],axis=1)
+    
+    # find the species with the average CV greater than the flucutation threshold
+    species_fluctutating = np.count_nonzero(average_variation_coeff_per_spec > fluctuation_thresh)
+    
+    # find the proportion of species with fluctuating dynamics in the whole community.
+    fluct_prop = species_fluctutating/ode_sol.y.shape[0]
+    
+    return fluct_prop
+
+##########################################
+
+communities_fluctuation_coefficient = \
+    [detect_fluctuations(deepcopy(community_object),lineages = np.arange(5), from_which_time = 7000) \
+        for communities_no_species in community_dynamics_invasibility_015['0.90.15'].values()
+            for community_object in communities_no_species]
+
+communities_fluctuation_coefficient = list(chain.from_iterable(communities_fluctuation_coefficient))
+
+############# retesting lyapunov exponents #############
+
+colourmap_base = mpl.colormaps['plasma_r'](0.6)
+light_dark_range = np.linspace(0.85,0,256)
+lighten_func = lambda val, i : val + i*(1-val)
+colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
+                for i in light_dark_range]
+cmap = mpl.colors.ListedColormap(colours_list)
+norm = mpl.colors.Normalize(vmin = 0, vmax = 1)
+sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+sns.set_style('white')
+
+fig, ax = plt.subplots(1,1,sharex=True,sharey=True,figsize=(9,7),layout='constrained')
+
+clb = plt.colorbar(sm,ax=ax,shrink=0.8,pad=0.1)
+clb.ax.set_title('Fluctuations',fontsize=18,
+                 pad=7.5)
+
+communities_dynamics_df['fluctuations'] = np.nan
+communities_dynamics_df.loc[(communities_dynamics_df['sigma_a'] == 0.15) & \
+                            (communities_dynamics_df['mu_a'] == 0.9),'fluctuations'] = \
+    communities_fluctuation_coefficient
+
+subfig = sns.scatterplot(data=communities_dynamics_df.iloc[np.where((communities_dynamics_df['sigma_a'] == 0.15) & \
+                                                           (communities_dynamics_df['mu_a'] == 0.9))],
+                      x='no_species',y='final_diversity',hue='fluctuations',
+                      ax=ax,palette=cmap,hue_norm=sm.norm,s=80,edgecolor='black',
+                      linewidth=0.5)
+subfig.set_xlabel('Species pool size',fontsize=20)
+subfig.set_ylabel('Species diversity (at t = 7000-10000)',fontsize=20)
+subfig.set_title('Invasibility is a good measure of \n ecological dynamics',fontsize=28,
+                 pad=10)
+subfig.set_xticks(np.arange(np.min(communities_dynamics_df['no_species']),
+                            np.max(communities_dynamics_df['no_species'])+3,3))
+ax.set_ylim([0,np.max(communities_dynamics_df['no_species'])])
+ax.get_legend().remove()
+sns.despine()
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/fluct_bad_metric.png",
+            dpi=300,bbox_inches='tight')
+
+
+################## Retesting fluctuation coefficient ######################
