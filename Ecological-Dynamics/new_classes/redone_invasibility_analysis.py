@@ -113,7 +113,7 @@ communities_dynamics_df['survival_fraction'] = \
 
 sns.set_style('white')
 
-cmap = mpl.cm.plasma_r
+cmap = mpl.cm.viridis_r
 bounds = np.append(np.sort(np.unique(communities_dynamics_df['no_species'])),52)
 norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
@@ -139,8 +139,12 @@ plt.gcf().text(0.89, 0.5, 'Std. in interaction strength', fontsize=18,
 
 clb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap),ax=axs,shrink=0.8,
                    pad=0.16)
-clb.ax.set_title('Initial number \n of species',fontsize=18,
+clb.ax.set_title('Species pool \n size',fontsize=18,
                  pad=7.5)
+spacing = np.linspace(bounds[0],bounds[-1],len(bounds))
+add_on = np.diff(spacing)[0]/2
+clb.set_ticks(spacing[:-1] + add_on)
+clb.set_ticklabels(bounds[:-1])
 
 mu_as = np.unique(communities_dynamics_df['mu_a'])[[0,6,8,9]]
 no_species_test = len(np.unique(communities_dynamics_df['no_species']))
@@ -155,7 +159,7 @@ for i, ax in enumerate(axs.flat):
     subfig = sns.scatterplot(data=communities_dynamics_df.iloc[np.where((communities_dynamics_df['sigma_a'] == sigma_a_plot[i]) & \
                                                                (communities_dynamics_df['mu_a'] == mu_a_plot[i]))],
                           x='invasibility',y='survival_fraction',hue='no_species',
-                          ax=ax,palette='plasma_r',hue_norm=norm,s=60)
+                          ax=ax,palette='viridis_r',hue_norm=norm,s=60)
     subfig.set(xlabel=None,ylabel=None)
     subfig.set_xticks(range(2))
     subfig.set_yticks(range(2))
@@ -173,7 +177,7 @@ plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dyna
 
 ###########################################
 
-colourmap_base = mpl.colormaps['plasma_r'](0.99)
+colourmap_base = mpl.colormaps['viridis_r'](0.99)
 light_dark_range = np.linspace(0.85,0,256)
 lighten_func = lambda val, i : val + i*(1-val)
 colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
@@ -242,7 +246,7 @@ communities_fluctuation_coefficient = \
 
 communities_fluctuation_coefficient = list(chain.from_iterable(communities_fluctuation_coefficient))
 
-############# retesting lyapunov exponents #############
+##########################
 
 colourmap_base = mpl.colormaps['plasma_r'](0.6)
 light_dark_range = np.linspace(0.85,0,256)
@@ -284,5 +288,63 @@ sns.despine()
 plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/fluct_bad_metric.png",
             dpi=300,bbox_inches='tight')
 
+############################################################
 
-################## Retesting fluctuation coefficient ######################
+custom_YlGrBl = \
+    mpl.colors.LinearSegmentedColormap.from_list('custom YlGBl',
+                                                 ['#e9a100ff','#1fb200ff',
+                                                  '#1f5a00ff','#00e9e9ff','#001256fd'],
+                                                 N=49)
+    
+sns.set_style('white')
+fig, ax = plt.subplots(1,1,sharex=True,sharey=True,figsize=(9,7),layout='constrained')
+
+simulation = community_dynamics_invasibility_01['0.90.1']['49'][6].ODE_sols['lineage 0']
+
+for i in range(49):
+    
+    ax.plot(simulation.t[:100],simulation.y[i,:100].T,
+            color = custom_YlGrBl(i),linewidth=2)
+    
+plt.xlabel('time',fontsize=32)
+plt.ylabel('Species abundances',fontsize=32)
+plt.xlim([simulation.t[0]-50,simulation.t[100]+50])
+plt.ylim([-0.001,0.55])
+plt.xticks([], [])
+plt.yticks([], [])
+sns.despine()
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/chaotic_community_new.png",
+            dpi=300,bbox_inches='tight')
+
+################
+
+sns.set_style('white')
+fig, ax = plt.subplots(1,1,sharex=True,sharey=True,figsize=(9,7),layout='constrained')
+    
+ax.plot(simulation.t[:100],simulation.y[12,:100].T,color = custom_YlGrBl(12),
+        linewidth=2)
+
+plt.xlim([simulation.t[0]-50,simulation.t[100]+50])
+plt.ylim([-0.001,0.55])
+plt.xticks([], [])
+plt.yticks([], [])
+sns.despine()
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/chaotic_community_new_1_spec.png",
+            dpi=300,bbox_inches='tight')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
