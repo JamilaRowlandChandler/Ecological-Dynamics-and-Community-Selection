@@ -250,41 +250,41 @@ class ParametersInterface:
         
         pass
     
-    def competition_scaled_with_growth(self,max_a,sigma_a):
+#    def competition_scaled_with_growth(self,max_a,sigma_a):
         
-        min_growth = np.min(self.growth_rates)
-        max_growth = np.max(self.growth_rates)
+#        min_growth = np.min(self.growth_rates)
+#        max_growth = np.max(self.growth_rates)
         
-        probability_interaction = \
-            (self.growth_rates - min_growth)/(max_growth-min_growth)
+#        probability_interaction = \
+#            (self.growth_rates - min_growth)/(max_growth-min_growth)
         
-        are_species_interacting = \
-            np.random.binomial(1,np.tile(probability_interaction,self.no_species),
-                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
+#        are_species_interacting = \
+#            np.random.binomial(1,np.tile(probability_interaction,self.no_species),
+#                               size=self.no_species*self.no_species).reshape((self.no_species,self.no_species))
         
         ################################
         
-        def interaction_strength(growth_i,growth_j,
-                                 max_a,sigma_a,niche_width=0.5):
+#        def interaction_strength(growth_i,growth_j,
+#                                 max_a,sigma_a,niche_width=0.5):
             
-            expected_interaction_strength = max_a*np.exp(-((growth_i - growth_j)**2)/(2*niche_width^2))
+#            expected_interaction_strength = max_a*np.exp(-((growth_i - growth_j)**2)/(2*niche_width^2))
             
-            actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
+#            actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
             
-            return actual_interaction_strength
+#            return actual_interaction_strength
             
-        growth_rates_i, growth_rates_j = np.meshgrid(self.growth_rates,self.growth_rates)
+#        growth_rates_i, growth_rates_j = np.meshgrid(self.growth_rates,self.growth_rates)
 
-        interaction_strengths = interaction_strength(growth_rates_i,growth_rates_j,
-                                                     max_a,sigma_a)
+#        interaction_strengths = interaction_strength(growth_rates_i,growth_rates_j,
+#                                                     max_a,sigma_a)
 
-        interact_mat = are_species_interacting * interaction_strengths
-        np.fill_diagonal(interact_mat, 1)
+#        interact_mat = are_species_interacting * interaction_strengths
+#        np.fill_diagonal(interact_mat, 1)
         
-        return interact_mat
+#        return interact_mat
     
-    def alternative_competition_scaled_with_growth(self,max_a,sigma_a,average_degree,
-                                                   beta=7,self_interaction=1):
+    def competition_scaled_with_growth(self,max_a,sigma_a,average_degree,
+                                       beta=7,self_interaction=1):
         
         # create i's
         species = np.arange(1,self.no_species+1)
@@ -346,8 +346,10 @@ class ParametersInterface:
         def interaction_strength(growth_i,growth_j,
                                  max_a,sigma_a,niche_width=0.5):
             
-            expected_interaction_strength = \
-                max_a / (1 + np.exp(-(growth_j - growth_i)/(niche_width)))
+            #expected_interaction_strength = \
+            #    max_a / (1 + np.exp(-(growth_j - growth_i)/(niche_width)))
+            
+            expected_interaction_strength = max_a*(1-np.exp(-((growth_i - growth_j)**2)/(2*niche_width**2)))
             
             actual_interaction_strength = np.random.normal(expected_interaction_strength,sigma_a)
             

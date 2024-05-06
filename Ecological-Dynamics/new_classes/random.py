@@ -93,61 +93,6 @@ def fluctuation_coefficient(ode_sol,from_which_time,fluctuation_thresh = 5e-2):
     
     return fluct_prop
 
-##########################################
-
-chaos_im = np.load('chaos_09_005.npy')
-oscillations_im = np.load('oscillations_09_005.npy')
-
-chaos_dynamics = gLV(no_species = 50, growth_func = 'fixed', growth_args = None,
-               interact_func = None,interact_args = {'mu_a':0.9,'sigma_a':0.05},
-               usersupplied_interactmat = chaos_im)
-chaos_dynamics.simulate_community(np.arange(5),t_end = 10000)
-chaos_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
-
-oscillations_dynamics = gLV(no_species = 50, growth_func = 'fixed', growth_args = None,
-               interact_func = None,interact_args = {'mu_a':0.9,'sigma_a':0.05},
-               usersupplied_interactmat = oscillations_im)
-oscillations_dynamics.simulate_community(np.arange(5),t_end = 10000)
-oscillations_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
-
-communities_fluctuation_coefficient = \
-    [detect_fluctuations(deepcopy(community_object),lineages = np.arange(5), from_which_time = 7000) \
-        for community_object in [chaos_dynamics,oscillations_dynamics]]
-        
-print(chaos_dynamics.final_diversity,'\n',oscillations_dynamics.final_diversity)
-
-##########################
-
-custom_YlGrBl = \
-    mpl.colors.LinearSegmentedColormap.from_list('custom YlGBl',
-                                                 ['#e9a100ff','#1fb200ff',
-                                                  '#1f5a00ff','#00e9e9ff','#001256fd'],
-                                                 N=50)
-sns.set_style('white')
-fig, axs = plt.subplots(2,1,sharex=True,sharey=True,figsize=(7,7),layout='constrained')
-
-for ax, simulation in zip(axs.flatten(),[chaos_dynamics.ODE_sols['lineage 3'],
-                                         oscillations_dynamics.ODE_sols['lineage 0']]):
-    
-    for i in range(49):
-    
-        ax.plot(simulation.t[100:],simulation.y[i,100:].T,
-                color = custom_YlGrBl(i),linewidth=2)
-        
-    ax.set_xlim([5000-50,10000+50])
-    ax.set_ylim([-0.01,0.4])
-        
-fig.supxlabel('time',fontsize=32)
-fig.supylabel('Species abundances',fontsize=32)
-plt.xticks([], [])
-plt.yticks([], [])
-sns.despine()
-
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/fluctuation_coefficient_comparison.png",
-            dpi=300,bbox_inches='tight')
-
-################
-
 def calculate_les(gLV_object,lineages):
     
     le_lineages = \
@@ -222,58 +167,162 @@ def lyapunov_exponents(gLV_object,lineage,n=10,dt=7000,separation=1e-2,extinct_t
     
     return np.array(log_d1d0_list)
 
+##########################################
+
+chaos_im = np.load('chaos_09_005.npy')
+oscillations_im = np.load('oscillations_09_005.npy')
+community_dynamics_invasibility_005 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_new.pkl")
+stable_im = deepcopy(community_dynamics_invasibility_005['0.90.05']['49'][0].interaction_matrix)
+
+chaos_dynamics = gLV(no_species = 50, growth_func = 'fixed', growth_args = None,
+               interact_func = None,interact_args = {'mu_a':0.9,'sigma_a':0.05},
+               usersupplied_interactmat = chaos_im)
+chaos_dynamics.simulate_community(np.arange(5),t_end = 10000)
+chaos_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
+
+oscillations_dynamics = gLV(no_species = 50, growth_func = 'fixed', growth_args = None,
+               interact_func = None,interact_args = {'mu_a':0.9,'sigma_a':0.05},
+               usersupplied_interactmat = oscillations_im)
+oscillations_dynamics.simulate_community(np.arange(5),t_end = 10000)
+oscillations_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
+
+stable_dynamics = gLV(no_species = 49, growth_func = 'fixed', growth_args = None,
+               interact_func = None,interact_args = {'mu_a':0.9,'sigma_a':0.05},
+               usersupplied_interactmat = stable_im)
+stable_dynamics.simulate_community(np.arange(5),t_end = 10000)
+stable_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
+
+##########################
+
+#custom_YlGrBl = \
+#    mpl.colors.LinearSegmentedColormap.from_list('custom YlGBl',
+#                                                 ['#e9a100ff','#1fb200ff',
+#                                                  '#1f5a00ff','#00e9e9ff','#001256fd'],
+#                                                 N=50)
+
+sns.set_style('white')
+fig, axs = plt.subplots(3,1,sharex=True,sharey=True,figsize=(5,7),layout='constrained')
+
+colours_list = [['#ffe837ff','#e9a100ff','#b34b00ff'],
+                ['#67c6fbff','#1d4bfaff','#001256fd'],
+                ['#3db200ff','#1f5a00ff','#002802ff']]
+
+for ax, simulation, colours in zip(axs.flatten(),[chaos_dynamics.ODE_sols['lineage 1'],
+                                         oscillations_dynamics.ODE_sols['lineage 2'],
+                                         stable_dynamics.ODE_sols['lineage 0']],
+                                  colours_list):
+    
+    custom_cm = mpl.colors.LinearSegmentedColormap.from_list('custom_cm',
+                                                             colours,
+                                                             N=49)
+
+    for i in range(49):
+    
+        ax.plot(simulation.t[50:],simulation.y[i,50:].T,
+                color = custom_cm(i),linewidth=1.5)
+        
+    ax.set_xlim([2500-50,10000+50])
+    ax.set_ylim([-0.01,0.4])
+        
+fig.supxlabel('time',fontsize=32)
+fig.supylabel('Species abundances',fontsize=32)
+plt.xticks([], [])
+plt.yticks([], [])
+sns.despine()
+
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/fluctuation_coefficient_comparison.png",
+#            dpi=300,bbox_inches='tight')
+plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/fluctuation_coefficient_comparison.png",
+            dpi=300,bbox_inches='tight')
+
+#####################
+
+sns.set_style('white')
+fig, axs = plt.subplots(1,1,sharex=True,sharey=True,figsize=(5,3),layout='constrained')
+
+axs.plot(chaos_dynamics.ODE_sols['lineage 1'].t[50:],chaos_dynamics.ODE_sols['lineage 1'].y[31,50:].T,
+         color='#e9a100ff',linewidth=2)
+        
+axs.set_xlim([4500-50,10000+50])
+axs.set_ylim([-0.01,0.2])
+        
+plt.xticks([], [])
+plt.yticks([], [])
+sns.despine()
+
+plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/single_chaos.png",
+            dpi=300,bbox_inches='tight')
+
+################
+
+communities_fluctuation_coefficient = \
+    [detect_fluctuations(deepcopy(community_object),lineages = np.arange(5), from_which_time = 7000) \
+        for community_object in [chaos_dynamics,oscillations_dynamics,stable_dynamics]]
+        
 communities_les = \
     [calculate_les(deepcopy(community_object),lineages = np.arange(5)) \
-        for community_object in [chaos_dynamics,oscillations_dynamics]]
+        for community_object in [chaos_dynamics,oscillations_dynamics,stable_dynamics]]
         
+invasibilities = [invasibility_l 
+                  for community in [chaos_dynamics,oscillations_dynamics,stable_dynamics]
+                      for invasibility_l in community.invasibility.values()]
+
 #######################
 
 sns.set_style('white')
-hue_dict = {**{i : '#e9a100ff' for i in range(4)},**{i : '#001256fd' for i in range(4,8)}}
+#hue_dict = {**{i : '#e9a100ff' for i in range(4)},**{i : '#001256fd' for i in range(4,9)}}
+hue_dict = {0:'#e9a100ff',1:'#001256fd',2:'#1f5a00ff'}
 
-fig, axs = plt.subplots(1,3,sharex=True,figsize=(20,6),layout='constrained')
+fig, axs = plt.subplots(1,3,sharey=True,figsize=(13,2.2),layout='constrained')
 
-community_label = np.concatenate((np.repeat('chaos',5),np.repeat('oscillations',5)))
+#axs.tick_params(axis='both', which='minor', labelsize=8)
 
-communities_fluctuation_coefficient[0].pop(1)
-communities_fluctuation_coefficient[1].pop(4)
-proportion_fluctuating = list(itertools.chain.from_iterable(communities_fluctuation_coefficient))
-lineage_label = np.arange(8)
+proportion_fluctuating = np.array(list(itertools.chain.from_iterable(communities_fluctuation_coefficient)))
+#community_label = np.concatenate((np.repeat('chaos',4),np.repeat('oscillations',5)))
+#lineage_label = np.arange(9)
+community_label = np.array(['chaos','oscillations','stable'])
+lineage_label = np.arange(3)
 
-p1 = sns.stripplot(x=community_label,y=proportion_fluctuating,hue=lineage_label,
-                   palette = hue_dict, ax=axs.flatten()[0])
-axs[0].set_ylabel('Fluctuation coefficient',fontsize=18)
-axs[0].set_xticklabels(['Unstable and fluctuating','Oscillations'], size=18)
+p1 = sns.stripplot(y=community_label,x=proportion_fluctuating[[1,7,10]],hue=lineage_label,
+                   palette = hue_dict, ax=axs.flatten()[0],size=15)
+axs[0].set_xlabel('Fluctuation coefficient',fontsize=24)
+axs[0].set_yticklabels(['F','O','S'], size=24)
 axs[0].get_legend().remove()
-p1.set_ylim([-0.05,1.05])
-p1.set_yticks(range(2))
+axs[0].tick_params(axis='x', which='major', labelsize=16)
+p1.set_xlim([-0.05,1.05])
+p1.set_xticks(range(2))
 
 plot_les = np.concatenate([le for community in communities_les for le in community.values()])
-plot_les = np.delete(plot_les,[np.concatenate((np.arange(10,20),np.arange(90,100)))],None)
-community_type = np.concatenate((np.repeat('chaos',40),np.repeat('oscillations',40)))
-lineage_label = np.repeat(np.arange(10),8)
+#community_type = np.concatenate((np.repeat('chaos',40),np.repeat('oscillations',50)))
+#lineage_label = np.repeat(np.arange(9),10)
+community_type = np.concatenate((np.repeat('chaos',10),np.repeat('oscillations',10),np.repeat('stable',10)))
+lineage_label = np.repeat(np.arange(3),10)
 
-p2 = sns.pointplot(x=community_type,y=plot_les,hue=lineage_label,errorbar='sd',
+p2 = sns.pointplot(y=community_type,x=plot_les[np.concatenate((np.arange(10,20),np.arange(70,80),np.arange(100,110)))],
+                   hue=lineage_label,errorbar='sd',markersize=15,
                    dodge=0.3,palette = hue_dict, ax=axs.flatten()[1])
-axs[1].set_ylabel('Max. lyapunov exponent',fontsize=18)
-axs[1].set_xticklabels(['Unstable and fluctuating','Oscillations'], size=18)  
+#axs[1].ticklabel_format(axis='x', style='scientific', scilimits=(0, 0))
+axs[1].set_xlabel('Max. lyapunov exponent',fontsize=24)
+axs[1].set_yticklabels(['F','O','S'], size=24)  
 axs[1].get_legend().remove()
+axs[1].tick_params(axis='x', which='major', labelsize=16)
 
-invasibilities = [invasibility_l 
-                  for community in [chaos_dynamics,oscillations_dynamics]
-                      for invasibility_l in community.invasibility.values()]
-invasibilities.pop(1)
-invasibilities.pop(-1)
-community_label = np.concatenate((np.repeat('chaos',4),np.repeat('oscillations',4)))
-lineage_label = np.arange(8)
-p3 = sns.stripplot(x=community_label,y=invasibilities,hue=lineage_label,
-                   dodge=0.3,palette = hue_dict, ax=axs.flatten()[2])
-p3.set_ylim([-0.05,1.05])
-axs[2].set_ylabel('Re-invadability',fontsize=18)
-axs[2].set_xticklabels(['Unstable and fluctuating','Oscillations'], size=18)
+#community_label = np.concatenate((np.repeat('chaos',4),np.repeat('oscillations',5)))
+#lineage_label = np.arange(9)
+community_label = np.array(['chaos','oscillations','stable'])
+lineage_label = np.arange(3)
+
+p3 = sns.stripplot(y=community_label,x=np.array(invasibilities)[[1,7,10]],hue=lineage_label,
+                   dodge=0.3,palette = hue_dict, ax=axs.flatten()[2], size = 15)
+p3.set_xlim([-0.05,1.05])
+axs[2].set_xlabel('Re-invadability',fontsize=24)
+axs[2].set_yticklabels(['F','O','S'],size=24)
 axs[2].get_legend().remove()
-p3.set_yticks(range(2))
+axs[2].tick_params(axis='x', which='major', labelsize=16)
+p3.set_xticks(range(2))
      
-fig.supxlabel('Ecological dynamics',fontsize=24)
+#fig.supylabel('Ecological dynamics \n',fontsize=24)
 sns.despine()
 
+plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/metrics_comparison.png",
+            dpi=300,bbox_inches='tight')

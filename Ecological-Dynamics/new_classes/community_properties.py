@@ -36,6 +36,11 @@ class CommunityPropertiesInterface:
                 
             self.final_composition[lineage_key] = final_popdyn[0]
             self.final_diversity[lineage_key] = final_popdyn[1]
+            
+        self.average_diversity_over_time = \
+            {'lineage ' + str(lineage) : self.average_diversity_at_time_t('lineage ' + str(lineage),
+                                                                          [from_which_time,self.t_end]) \
+                 for lineage in lineages}
     
         ########## Determine if the community is fluctuating ###############
        
@@ -91,6 +96,45 @@ class CommunityPropertiesInterface:
         diversity = np.count_nonzero(present_species)
          
         return [present_species.nonzero()[0],diversity]
+    
+    def average_diversity_at_time_t(self,lineage,timeframe,extinct_thresh=1e-4):
+        
+        '''
+        
+        Calculate species diversity at a given time.
+        
+        Parameters
+        ----------
+        extinct_thresh : float
+            Species extinction threshold.
+        ind : int
+            Index of time point to calculate species diversity (to find species populations at the right time)
+        simulations : OdeResult object of scipy.integrate.solve_ivp module
+            (Deterministic) Solution to gLV ODE system.
+    
+        Returns
+        -------
+        Species present, species diversity (no. species), species abundances
+    
+        '''
+        
+        window_shape = [self.no_species,10]
+        
+        simulations_copy = deepcopy(self.ODE_sols[lineage])
+        
+        # find the indices of the nearest time to the times supplied in timeframe
+        indices = find_nearest_in_timeframe(timeframe,simulations_copy.t)    
+        
+        abundances_sliding_window = \
+            np.lib.stride_tricks.sliding_window_view(simulations_copy.y[:self.no_species,indices[0]:indices[1]],
+                                                     window_shape)
+        
+        present_species = np.any(abundances_sliding_window > extinct_thresh,axis=3)[0]
+        # calculate species diversity (aka no. of species that aren't extinct, 
+        #   or the length of the array of present species abundances)
+        average_diversity = np.count_nonzero(present_species,axis=1).mean()
+         
+        return average_diversity
     
     def detect_invasibility(self,lineage,t_start,extinct_thresh=1e-4):
         
