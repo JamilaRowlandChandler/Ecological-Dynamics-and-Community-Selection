@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May  2 23:32:49 2024
+Created on Wed May  8 15:19:35 2024
 
 @author: jamil
 """
@@ -11,64 +11,13 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 import pandas as pd
 from copy import deepcopy
-from scipy.stats import pearsonr
-from scipy.stats import spearmanr
 import itertools
+import sys
 
+sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/model_modules')
 from model_classes import gLV
 
-from utility_functions import community_object_to_df
-from utility_functions import pickle_dump
-from utility_functions import mean_std_deviation
-
-###################
-
-mu_a = 0.7
-sigma_a = 0.1
-
-gLV_dynamics = gLV(no_species = 49, growth_func = 'fixed', growth_args = None,
-               interact_func = 'random',interact_args = {'mu_a':mu_a,'sigma_a':sigma_a})
-gLV_dynamics.simulate_community(np.arange(5),t_end = 10000)
-
-one_more_species_matrix = mu_a + sigma_a*np.random.randn(50,50)
-np.fill_diagonal(one_more_species_matrix,1)
-one_more_species_matrix[:-1,:-1] = gLV_dynamics.interaction_matrix
-
-initial_abundances = np.vstack([ode_sol.y[:,-1] for ode_sol in gLV_dynamics.ODE_sols.values()])
-#new_species_abundances = np.random.uniform(1e-8,2/50,5).reshape((5,1))
-new_species_abundances = np.random.uniform(1e-8,1e-4,5).reshape((5,1))
-initial_abundances = np.concatenate((initial_abundances,new_species_abundances),
-                                    axis=1)
-
-gLV_dynamics2 = gLV(no_species = 50, growth_func = 'fixed', growth_args = None,
-               interact_func = None, interact_args = {'mu_a':mu_a,'sigma_a':sigma_a},
-               usersupplied_interactmat = one_more_species_matrix)
-gLV_dynamics2.simulate_community(np.arange(5),t_end = 10000,init_cond_func=None,
-                                 usersupplied_init_conds=initial_abundances.T)
-
-plt.plot(gLV_dynamics.ODE_sols['lineage 1'].t,gLV_dynamics.ODE_sols['lineage 1'].y.T)
-plt.plot(gLV_dynamics2.ODE_sols['lineage 1'].t,gLV_dynamics2.ODE_sols['lineage 1'].y[-1,:].T)
-
-print(gLV_dynamics2.ODE_sols['lineage 1'].y[-1,180:])
-
-######################################
-
-mu_a = 0.2
-sigma_a = 0.1
-
-growth_rates = np.random.binomial(1, 0.7, 49)
-
-gLV_dynamics = gLV(no_species = 49, growth_func = None, growth_args = None,
-               interact_func = 'random',interact_args = {'mu_a':mu_a,'sigma_a':sigma_a},
-               usersupplied_growth = growth_rates)
-gLV_dynamics.simulate_community(np.arange(5),t_end = 10000)
-gLV_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
-
-plt.plot(gLV_dynamics.ODE_sols['lineage 1'].t,gLV_dynamics.ODE_sols['lineage 1'].y.T)
-
-print(gLV_dynamics.final_diversity)
-
-############################################################
+################### Functions ############################
 
 def detect_fluctuations(gLV_object,lineages,from_which_time):
     
@@ -167,7 +116,7 @@ def lyapunov_exponents(gLV_object,lineage,n=10,dt=7000,separation=1e-2,extinct_t
     
     return np.array(log_d1d0_list)
 
-##########################################
+############################ Simulating and plotting community dynamics #############
 
 chaos_im = np.load('chaos_09_005.npy')
 oscillations_im = np.load('oscillations_09_005.npy')
@@ -192,13 +141,7 @@ stable_dynamics = gLV(no_species = 49, growth_func = 'fixed', growth_args = None
 stable_dynamics.simulate_community(np.arange(5),t_end = 10000)
 stable_dynamics.calculate_community_properties(np.arange(5),from_which_time = 7000)
 
-##########################
-
-#custom_YlGrBl = \
-#    mpl.colors.LinearSegmentedColormap.from_list('custom YlGBl',
-#                                                 ['#e9a100ff','#1fb200ff',
-#                                                  '#1f5a00ff','#00e9e9ff','#001256fd'],
-#                                                 N=50)
+####### Plotting #########
 
 sns.set_style('white')
 fig, axs = plt.subplots(3,1,sharex=True,sharey=True,figsize=(5,7),layout='constrained')
@@ -235,7 +178,7 @@ sns.despine()
 plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/fluctuation_coefficient_comparison.png",
             dpi=300,bbox_inches='tight')
 
-#####################
+######
 
 sns.set_style('white')
 fig, axs = plt.subplots(1,1,sharex=True,sharey=True,figsize=(5,3),layout='constrained')
@@ -253,7 +196,7 @@ sns.despine()
 plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/single_chaos.png",
             dpi=300,bbox_inches='tight')
 
-################
+######################## Comparing re-invadability metric, fluctuation coefficients and lyapunov exponents #########
 
 communities_fluctuation_coefficient = \
     [detect_fluctuations(deepcopy(community_object),lineages = np.arange(5), from_which_time = 7000) \
@@ -270,16 +213,11 @@ invasibilities = [invasibility_l
 #######################
 
 sns.set_style('white')
-#hue_dict = {**{i : '#e9a100ff' for i in range(4)},**{i : '#001256fd' for i in range(4,9)}}
 hue_dict = {0:'#e9a100ff',1:'#001256fd',2:'#1f5a00ff'}
 
 fig, axs = plt.subplots(1,3,sharey=True,figsize=(13,2.2),layout='constrained')
 
-#axs.tick_params(axis='both', which='minor', labelsize=8)
-
 proportion_fluctuating = np.array(list(itertools.chain.from_iterable(communities_fluctuation_coefficient)))
-#community_label = np.concatenate((np.repeat('chaos',4),np.repeat('oscillations',5)))
-#lineage_label = np.arange(9)
 community_label = np.array(['chaos','oscillations','stable'])
 lineage_label = np.arange(3)
 
@@ -293,8 +231,6 @@ p1.set_xlim([-0.05,1.05])
 p1.set_xticks(range(2))
 
 plot_les = np.concatenate([le for community in communities_les for le in community.values()])
-#community_type = np.concatenate((np.repeat('chaos',40),np.repeat('oscillations',50)))
-#lineage_label = np.repeat(np.arange(9),10)
 community_type = np.concatenate((np.repeat('chaos',10),np.repeat('oscillations',10),np.repeat('stable',10)))
 lineage_label = np.repeat(np.arange(3),10)
 
@@ -307,8 +243,6 @@ axs[1].set_yticklabels(['F','O','S'], size=24)
 axs[1].get_legend().remove()
 axs[1].tick_params(axis='x', which='major', labelsize=16)
 
-#community_label = np.concatenate((np.repeat('chaos',4),np.repeat('oscillations',5)))
-#lineage_label = np.arange(9)
 community_label = np.array(['chaos','oscillations','stable'])
 lineage_label = np.arange(3)
 

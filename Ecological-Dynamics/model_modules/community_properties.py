@@ -19,6 +19,37 @@ class CommunityPropertiesInterface:
     
     def calculate_community_properties(self,lineages,from_which_time):
         
+        '''
+        
+        Automatically calculate community properties from a given time to the 
+        end of simulations. This saves you from having to call all the functions
+        for calculating different properties separately.
+       
+        Properties calculated: 
+            species diversity
+            species composition
+            invasibility/reinvadability
+            unique species compositions 
+            community function, if applicable
+                                
+        Parameters
+        ----------
+        lineages : list or np.ndarray of ints
+            list of lineage indexes.
+        from_which_time : float
+            time to start calculating community properties.
+
+        Raises
+        ------
+        Exception
+            If from_which_time is after the end of simulations.
+
+        Returns
+        -------
+        None.
+
+        '''
+        
         if self.t_end < from_which_time:
             
             raise Exception("Start time must be less than the end of simulation.")
@@ -31,19 +62,20 @@ class CommunityPropertiesInterface:
             
             lineage_key = 'lineage ' + str(lineage)
             
+            # returns species diversity and composition between from_which_time and t_end
             final_popdyn = \
                 self.species_diversity(lineage_key,[from_which_time,self.t_end])
                 
             self.final_composition[lineage_key] = final_popdyn[0]
             self.final_diversity[lineage_key] = final_popdyn[1]
-            
+        
+        # calculates average diversity per time window between from_which_time and t_end
         self.average_diversity_over_time = \
             {'lineage ' + str(lineage) : self.average_diversity_at_time_t('lineage ' + str(lineage),
                                                                           [from_which_time,self.t_end]) \
                  for lineage in lineages}
-    
-        ########## Determine if the community is fluctuating ###############
        
+        # calculate community invasibility/re-invadability between from_which_time and t_end
         self.invasibility = \
             {'lineage ' + str(lineage) : self.detect_invasibility('lineage ' + str(lineage),
                                                                   from_which_time) \
@@ -53,32 +85,36 @@ class CommunityPropertiesInterface:
         no_uniq_compositions, comps = self.unique_compositions()
         
         self.no_unique_compositions = no_uniq_compositions
+        # label each lineage with its unique composition identifier
         self.unique_composition_label = {'lineage '+ str(lineage) : comp for lineage, comp in zip(lineages, comps)}
         
+        # optional - calculate properties associated with community function
         if hasattr(self, 'species_contribution_community_function'):
             
             self.community_function = \
-                {'lineage ' + str(lineage) : self.community_function_totalled_over_maturation()}
+                {'lineage ' + str(lineage) : self.community_function_totalled_over_maturation(lineage) \
+                     for lineage in lineages}
     
     def species_diversity(self,lineage,timeframe,extinct_thresh=1e-4):
         
         '''
         
-        Calculate species diversity at a given time.
-        
+        Calculate species diversity and composition
+
         Parameters
         ----------
-        extinct_thresh : float
-            Species extinction threshold.
-        ind : int
-            Index of time point to calculate species diversity (to find species populations at the right time)
-        simulations : OdeResult object of scipy.integrate.solve_ivp module
-            (Deterministic) Solution to gLV ODE system.
-    
+        lineage : int
+            Lineage index.
+        timeframe : list or array of flaots
+            start and end time/timerange to calculate diversity in.
+        extinct_thresh : float, optional
+            Extinction threshold The default is 1e-4.
+
         Returns
         -------
-        Species present, species diversity (no. species), species abundances
-    
+        list
+            Species composition and diversity.
+
         '''
         
         simulations_copy = deepcopy(self.ODE_sols[lineage])
@@ -101,23 +137,25 @@ class CommunityPropertiesInterface:
         
         '''
         
-        Calculate species diversity at a given time.
-        
+        Calculate average species diversity and composition across a sliding window.
+
         Parameters
         ----------
-        extinct_thresh : float
-            Species extinction threshold.
-        ind : int
-            Index of time point to calculate species diversity (to find species populations at the right time)
-        simulations : OdeResult object of scipy.integrate.solve_ivp module
-            (Deterministic) Solution to gLV ODE system.
-    
+        lineage : int
+            Lineage index.
+        timeframe : list or array of flaots
+            start and end time/timerange to calculate diversity in.
+        extinct_thresh : float, optional
+            Extinction threshold The default is 1e-4.
+
         Returns
         -------
-        Species present, species diversity (no. species), species abundances
-    
+        list
+            Species composition and diversity.
+
         '''
         
+        # create sliding window
         window_shape = [self.no_species,10]
         
         simulations_copy = deepcopy(self.ODE_sols[lineage])
@@ -307,25 +345,25 @@ class CommunityPropertiesInterface:
     
     ############# Community function ################
       
-    def community_function_totalled_over_maturation(self):
+    def community_function_totalled_over_maturation(self,lineage):
         
         '''
         
+        Additive community function, calculated over maturation
+
         Parameters
         ----------
-        species_function : np.array of floats, size (no_species,)
-            Species contribution to community function.
-        species_abundances_over_time : .y attribute from OdeResult object of scipy.integrate.solve_ivp module
-            Species abundances over time.
-    
+        lineage : int
+            Lineage index.
+
         Returns
         -------
-        community_function : TYPE
-            DESCRIPTION.
-    
+        community_function : float
+            community function.
+
         '''
-        
-        summed_abundances = np.sum(self.ODE_sol.y[:self.no_species,:],axis=1)
+
+        summed_abundances = np.sum(self.ODE_sols[lineage].y[:self.no_species,:],axis=1)
         
         community_function = np.sum(np.multiply(self.species_contribution_community_function,
                                                 summed_abundances))

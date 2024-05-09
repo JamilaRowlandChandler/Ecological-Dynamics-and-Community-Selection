@@ -6,6 +6,7 @@ Created on Tue Apr 23 18:37:41 2024
 """
 
 # cd C:\Users\Jamila\Documents\PhD\Ecological-Dynamics-and-Community-Selection\Ecological-Dynamics\new_classes
+# cd C:\Users\jamil\Documents\PhD\Github Projects\Ecological-Dynamics-and-Community-Selection\Ecological-Dynamics\scripts
 
 import numpy as np
 import pandas as pd
@@ -16,9 +17,10 @@ from matplotlib import pyplot as plt
 from itertools import chain
 from time import sleep
 from tqdm import tqdm
+import sys
 
+sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/model_modules')
 from model_classes import gLV
-
 from utility_functions import generate_distribution
 from utility_functions import community_object_to_df
 from utility_functions import pickle_dump
@@ -91,20 +93,21 @@ pickle_dump("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dyn
 
 #######################################
 
-#community_dynamics_invasibility_005 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_new.pkl")
-#community_dynamics_invasibility_01 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_new.pkl")
-#community_dynamics_invasibility_015 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_015_new.pkl")
-#community_dynamics_invasibility_02 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_02_new.pkl")
-community_dynamics_invasibility_005 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_new.pkl")
-community_dynamics_invasibility_01 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_new.pkl")
-community_dynamics_invasibility_015 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_015_new.pkl")
-community_dynamics_invasibility_02 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_02_new.pkl")
+community_dynamics_invasibility_005 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_new.pkl")
+community_dynamics_invasibility_01 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_new.pkl")
+community_dynamics_invasibility_015 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_015_new.pkl")
+community_dynamics_invasibility_02 = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_02_new.pkl")
+#community_dynamics_invasibility_005 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_005_new.pkl")
+#community_dynamics_invasibility_01 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_01_new.pkl")
+#community_dynamics_invasibility_015 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_015_new.pkl")
+#community_dynamics_invasibility_02 = pd.read_pickle("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/community_dynamics_invasibility_011_02_new.pkl")
 
 communities_dynamics_df = \
     pd.concat([community_object_to_df(community_object,community_label = i,
                                       community_attributes=['mu_a','sigma_a',
                                                             'no_species','final_diversity',
-                                                            'invasibility']) \
+                                                            'invasibility','no_unique_compositions',
+                                                            'unique_composition_label']) \
                for community_dynamics in [community_dynamics_invasibility_005,community_dynamics_invasibility_01,
                                           community_dynamics_invasibility_015,community_dynamics_invasibility_02]
                    for communities_i_d in community_dynamics.values()
@@ -220,24 +223,24 @@ cmap = mpl.cm.viridis_r
 bounds = np.append(np.sort(np.unique(communities_dynamics_df['no_species'])),52)
 norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-fig, axs = plt.subplots(1,4,sharex=True,sharey=True,figsize=(13,5),layout='constrained')
+fig, axs = plt.subplots(1,3,sharex=True,sharey=True,figsize=(11,5),layout='constrained')
 #fig.suptitle('Effect of invasibility on community diversity',fontsize=32)
-fig.supxlabel('Re-invadability',fontsize=28)
-fig.supylabel('Survival fraction',fontsize=28)
+fig.suptitle('Avg. interaction strength',fontsize=28,weight='bold')
+fig.supxlabel('Re-invadability',fontsize=28,weight='bold')
+fig.supylabel('Survival fraction',fontsize=28,weight='bold')
 
-plt.gcf().text(0.45, 0.86,'Avg. interaction strength',fontsize=22,horizontalalignment='center',
-               verticalalignment='center')
+#plt.gcf().text(0.45, 0.86,'Avg. interaction strength \n',fontsize=28,horizontalalignment='center',
+#               verticalalignment='center',weight='bold')
 
 clb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap),ax=axs,shrink=1.6,
                    pad=0.05)
-clb.ax.set_title('Species pool \n size',fontsize=22,
-                 pad=7.5)
+clb.ax.set_title('Species pool \n size',fontsize=22,weight='bold',pad=7.5)
 spacing = np.linspace(bounds[0],bounds[-1],len(bounds))
 add_on = np.diff(spacing)[0]/2
 clb.set_ticks(spacing[:-1] + add_on)
 clb.set_ticklabels(bounds[:-1])
 
-mu_as = np.unique(communities_dynamics_df['mu_a'])[[0,6,8,9]]
+mu_as = np.unique(communities_dynamics_df['mu_a'])[[0,6,8]]
 no_species_test = len(np.unique(communities_dynamics_df['no_species']))
 sigma_a = 0.15
 
@@ -252,16 +255,53 @@ for i, ax in enumerate(axs.flat):
     subfig.set_yticks(range(2))
     ax.tick_params(axis='both', which='major', labelsize=16)
         
-    subfig.set_title(str(mu_a_plot[i]),fontsize=18,pad=4)
+    #subfig.set_title(str(mu_as[i]),fontsize=18,pad=4,weight='bold')
         
     ax.get_legend().remove()
     
 sns.despine()
 
-plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/invasibility_survivalfraction_poster.png",
+#plt.savefig("C:/Users/Jamila/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/invasibility_survivalfraction_poster.png",
+#            dpi=300,bbox_inches='tight')
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/invasibility_survivalfraction_poster.png",
             dpi=300,bbox_inches='tight')
 
 ###########################################
+
+# MA dynamics
+
+community = community_dynamics_invasibility_015['1.00.15']['25'][1]
+
+sns.set_style('white')
+fig, axs = plt.subplots(1,2,sharex=True,sharey=True,figsize=(8,3),layout='constrained')
+
+custom_YlGrBl = \
+    mpl.colors.LinearSegmentedColormap.from_list('custom_YlGBl',
+                                                 ['#e9a100ff','#1fb200ff',
+                                                  '#1f5a00ff','#00e9e9ff','#001256fd'],
+                                                 N=community.no_species.astype(int))
+
+for ax, simulation in zip(axs.flatten(),[community.ODE_sols['lineage 4'],
+                                         community.ODE_sols['lineage 3']]):
+    
+    for i in range(community.no_species.astype(int)):
+    
+        ax.plot(simulation.t[50:150],simulation.y[i,50:150].T,
+                color = custom_YlGrBl(i),linewidth=1.5)
+        
+    ax.set_xlim([2500-50,7500+50])
+    ax.set_ylim([-0.01,1.01])
+        
+fig.supxlabel('time',fontsize=28)
+fig.supylabel('Species \n abundances',fontsize=28,horizontalalignment='center',verticalalignment='center')
+plt.xticks([], [])
+plt.yticks([], [])
+sns.despine()
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/ma_dynamics_poster.png",
+            dpi=300,bbox_inches='tight')
+
+##############################################
 
 colourmap_base = mpl.colormaps['viridis_r'](0.99)
 light_dark_range = np.linspace(0.85,0,256)

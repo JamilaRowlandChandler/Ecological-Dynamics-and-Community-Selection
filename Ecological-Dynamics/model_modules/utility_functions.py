@@ -175,16 +175,54 @@ def community_object_to_df(community_object,
                          community_label=0,
                          column_names=None):
     
+    '''
+    
+    Convert model object (from model_classes module) in dataframe of attributes.
+
+    Parameters
+    ----------
+    community_object : model object from model_classes module
+        The model in object form.
+    community_attributes : list of strings, optional
+        Class attributes to include in the dataframe. 
+        The default is ['mu_a','sigma_a','no_species','no_unique_compositions',
+                        'unique_composition_label','final_diversity','invasibility'].
+    community_label : int, optional
+        Community label. The default is 0.
+    column_names : list of strings, optional
+        Column names. If None are specified, then column names are set as community_attributes
+
+    Raises
+    ------
+    Exception
+        The model object does not have this attribute.
+
+    Returns
+    -------
+    community_df : pd.DataFrame
+        Dataframe of model attributes.
+
+    '''
+    
+    # each row = 1 lineage
     no_lineages = len(community_object.ODE_sols)
     
+    # column of communtiy_label
     community_col = np.repeat(community_label,no_lineages)
     
+    # lineage column/indexer
     lineage_col = list(community_object.ODE_sols.keys())
     lineage_col = [int(lineage.replace('lineage ','')) for lineage in lineage_col]
     
     ###############################################
     
     def extract_attribute_make_df_col(community_object,attribute_name,no_lineages=no_lineages):
+        
+        '''
+        
+        Convert attribute to list for the dataframe.
+        
+        '''
         
         try:
         
@@ -198,22 +236,33 @@ def community_object_to_df(community_object,
         
         if isinstance(attribute,(int,float,str,np.int32,np.int64,np.float32,np.float32)):
             
+            # If the attribute is a single value, i.e. it is a model parameter
+            #   or a community property calculated from all lineages (e.g. no. 
+            #   unique compositions), then the attribute is repeated in the 
+            #   dataframe for each lineage.
+            
             attribute_col = np.repeat(attribute,no_lineages)
             
         elif isinstance(attribute,dict):
             
+            # attribute has separate values for each lineage
+            
             attribute_col = list(attribute.values())
         
-        elif isinstance(attribute,(list,np.ndarraytuple)):
+        elif isinstance(attribute,(list,np.ndarray,tuple)):
+            
+            # attribute has separate values for each lineage
             
             attribute_col = attribute
         
         return attribute_col
     
+    # convert attributes into lists for the dataframe
     attribute_columns = [community_col] + [lineage_col] + \
         [extract_attribute_make_df_col(community_object, attribute_name) \
              for attribute_name in community_attributes]
-            
+    
+    # add community and lineage names to column names
     if column_names:
             
         col_names = ['community','lineage'] + column_names
@@ -222,8 +271,7 @@ def community_object_to_df(community_object,
         
         col_names = ['community','lineage'] + community_attributes
         
-    ############# Convert lists to df ################
-    
+    # convert lists to df 
     community_df = pd.DataFrame(attribute_columns)
     community_df = community_df.T
     community_df = community_df.set_axis(col_names,axis=1)

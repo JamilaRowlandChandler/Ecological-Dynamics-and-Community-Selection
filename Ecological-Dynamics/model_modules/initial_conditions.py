@@ -15,6 +15,12 @@ class InitialConditionsInterface:
     
     def generate_initial_conditions(self,lineages,init_cond_func,usersupplied_init_conds):
         
+        '''
+        
+        Generate and assign initial conditions from multiple options/functions.
+        
+        '''
+        
         match init_cond_func:
             
             case 'Hu':

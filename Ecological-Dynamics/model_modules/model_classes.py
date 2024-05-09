@@ -16,11 +16,49 @@ from community_properties import CommunityPropertiesInterface
 
 class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesInterface):
     
+    '''
+    
+    Generalised Lotka-Volterra model (gLV).
+    
+    '''
+    
     def __init__(self,no_species,growth_func,growth_args,interact_func,interact_args,
                  usersupplied_growth=None,usersupplied_interactmat=None,
                  dispersal=1e-8):
         
-        # This function creates parameters
+        '''
+        
+        Initialise gLV class by assigning and generating model parameters.
+        
+        See ParametersInterface in model_parameters.py for details on functions
+        that generate model parameters.
+
+        Parameters
+        ----------
+        no_species : float
+            Number of species, or size of species pool.
+        growth_func : string
+            Name of the function used to generate growth rates.
+        growth_args : dict
+            Growth rates function arguments.
+        interact_func : TYPE
+            Name of the function used to generate the interaction matrix.
+        interact_args : dict
+            Interaction matrix function_arguments.
+        usersupplied_growth : np.ndarray of floats, size (no_species,), Optional
+            User-supplied growth rates (if you do not want to use an in-built method). 
+            The default is None.
+        usersupplied_interactmat : np.ndarray of floats, size (no_species,no_species), Optional
+            User-supplied interaction matrix (if you do not want to use an in-built method).
+            The default is None.
+        dispersal : float, optional
+            Dispersal/migration rate. The default is 1e-8.
+
+        Returns
+        -------
+        None.
+
+        '''
         
         self.no_species = no_species
         
@@ -125,6 +163,29 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
     def simulate_community(self,lineages,t_end,init_cond_func='Mallmin',
                            usersupplied_init_conds=None):
         
+        '''
+        
+        Simulate community dynamics from different initial conditions
+        
+        Parameters
+        ----------
+        lineages : list or np.ndarray of ints
+            lineages indexes. 
+            no. of lineages/len(lineages) = no. of initial conditions to simulate community dynamics from
+        t_end : float
+            Amount of time to run simulation
+        initi_cond_func : string, Optional
+            Name of function to generate initial species abundances. The default is 'Mallmin'.
+        usersupplied_init_conds : np.ndarray of size (self.no_species,len(lineages))
+            User-supplied initial species abundances (if the user does not want to use an in-built method).
+            The default is None.
+        
+        Returns
+        -------
+        None
+        
+        '''
+    
         self.t_end = t_end
         
         initial_abundances = \
@@ -162,36 +223,6 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
         
         def gLV_ODE(t,spec,growth_r,interact_mat,dispersal,extinct_thresh=1e-9):
             
-            '''
-            
-            ODE system from generalised Lotka-Volterra model. 
-            
-            Removes species below some extinction threshold to cap abundances species can
-            reinvade from and removes very small values that could cause numerical instability.
-            This is useful when dispersal = 0.
-            
-
-            Parameters
-            ----------
-            t : float
-                time.
-            spec : float
-                Species population dynamics at time t.
-            growth_r : np.array of float64, size (n,)
-                Array of species growth rates.
-            interact_mat : np.array of float64, size (n,n)
-                Interaction maitrx.
-            dispersal : float
-                Dispersal or migration rate.
-            extinct_thresh : float
-                Extinction threshold.
-
-            Returns
-            -------
-            dSdt : np.array of float64, size (n,)
-                array of change in population dynamics at time t aka dS/dt.
-
-            '''
             spec[spec < extinct_thresh] = 0 # set species abundances below extinction threshold to 0
             
             #dSdt = np.multiply(1 - np.matmul(interact_mat,spec), growth_r*spec) + dispersal
@@ -205,13 +236,53 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
     
 class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityPropertiesInterface):
     
+    '''
+    
+    Ecological model with Lotka-Volterra style competition and saturating cooperation.
+    
+    '''
+    
     def __init__(self,no_species,growth_func,growth_args,
                  competition_func,competition_args,cooperation_func,cooperation_args,
                  usersupplied_growth=None,usersupplied_competition=None,
                  usersupplied_cooperation=None,dispersal=1e-8):
         
-        # This function creates parameters
+        '''
         
+        Initialise gLV_allee class by assigning and generating model parameters.
+
+        Parameters
+        ----------
+        no_species : float
+            Number of species, or size of species pool.
+        growth_func : string
+            Name of the function used to generate growth rates.
+        growth_args : dict
+        competition_func : string
+            Name of function used to generate the competition matrix.
+        competition_args : dict
+            Competition matrix function arguments.
+        cooperation_func : string
+            Name of function used to generate the cooperation matrix.
+        cooperation_args : dict
+            Cooperation matrix function arguments.
+        usersupplied_growth : np.ndarray of floats, size (no_species,), Optional
+            User-supplied growth rates (if you do not want to use an in-built method). 
+            The default is None.
+        usersupplied_competition : np.ndarray of floats, size (no_species,no_species), Optional
+            User-supplied competition matrix (if you do not want to use an in-built method).
+            The default is None.
+        usersupplied_cooperation : np.ndarray of floats, size (no_species,no_species), Optional
+            User-supplied cooperation matrix (if you do not want to use an in-built method).
+            The default is None.
+        dispersal : float, optional
+            Dispersal/migration rate. The default is 1e-8.
+
+        Returns
+        -------
+        None.
+
+        '''
         self.no_species = no_species
         
         ############### Growth rates ####################
@@ -239,6 +310,7 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
             
         ###################### Interaction Matrix #############
         
+        # generate competition matrix 
         if competition_args:
             
            for key, value in competition_args.items():
@@ -282,6 +354,7 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
                 
         ################
         
+        # generate cooperation matrix 
         if cooperation_args:
             
            for key, value in cooperation_args.items():
@@ -329,6 +402,29 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
        
     def simulate_community(self,lineages,t_end,init_cond_func='Mallmin',
                            usersupplied_init_conds=None):
+        
+        '''
+        
+        Simulate community dynamics from different initial conditions
+        
+        Parameters
+        ----------
+        lineages : list or np.ndarray of ints
+            lineages indexes. 
+            no. of lineages/len(lineages) = no. of initial conditions to simulate community dynamics from
+        t_end : float
+            Amount of time to run simulation
+        initi_cond_func : string, Optional
+            Name of function to generate initial species abundances. The default is 'Mallmin'.
+        usersupplied_init_conds : np.ndarray of size (self.no_species,len(lineages))
+            User-supplied initial species abundances (if the user does not want to use an in-built method).
+            The default is None.
+        
+        Returns
+        -------
+        None
+
+        '''
         
         self.t_end = t_end
         
