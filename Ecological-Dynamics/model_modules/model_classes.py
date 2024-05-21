@@ -464,6 +464,8 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
         def gLV_allee_ODE(t,spec,growth_r,competitive_mat,cooperative_mat,gamma,
                           dispersal,extinct_thresh=1e-9):
             
+            #breakpoint()
+            
             spec[spec < extinct_thresh] = 0 # set species abundances below extinction threshold to 0
             
             competition = np.matmul(competitive_mat,spec)
