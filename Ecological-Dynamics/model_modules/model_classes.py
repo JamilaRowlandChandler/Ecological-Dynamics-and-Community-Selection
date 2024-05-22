@@ -471,8 +471,8 @@ class gLV_allee(ParametersInterface, InitialConditionsInterface, CommunityProper
             competition = np.matmul(competitive_mat,spec)
             cooperation = np.matmul(cooperative_mat,spec/(gamma+spec))
             
-            #dSdt = np.multiply(1 + cooperation - competition, growth_r*spec) + dispersal
-            dSdt = np.multiply(growth_r + cooperation - competition, spec) + dispersal
+            dSdt = np.multiply(1 + cooperation - competition, growth_r*spec) + dispersal
+            #dSdt = np.multiply(growth_r + cooperation - competition, spec) + dispersal
             
             return dSdt
         
