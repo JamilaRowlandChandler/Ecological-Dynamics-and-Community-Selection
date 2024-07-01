@@ -7,6 +7,7 @@ Created on Tue Apr 23 18:37:41 2024
 
 # cd C:\Users\Jamila\Documents\PhD\Ecological-Dynamics-and-Community-Selection\Ecological-Dynamics\new_classes
 # cd C:\Users\jamil\Documents\PhD\Github Projects\Ecological-Dynamics-and-Community-Selection\Ecological-Dynamics\scripts
+# cd C:\Users\jamil\Documents\PhD\GitHub projects\Ecological-Dynamics-and-Community-Selection\Ecological-Dynamics\Lotka-Volterra models\scripts
 
 import numpy as np
 import pandas as pd
@@ -19,7 +20,7 @@ from time import sleep
 from tqdm import tqdm
 import sys
 
-sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/model_modules')
+sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Lotka-Volterra models/model_modules')
 from model_classes import gLV
 from utility_functions import generate_distribution
 from utility_functions import community_object_to_df
@@ -226,7 +227,7 @@ norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 fig, axs = plt.subplots(1,3,sharex=True,sharey=True,figsize=(11,5),layout='constrained')
 #fig.suptitle('Effect of invasibility on community diversity',fontsize=32)
 fig.suptitle('Avg. interaction strength',fontsize=28,weight='bold')
-fig.supxlabel('Re-invadability',fontsize=28,weight='bold')
+fig.supxlabel('Recoverability \n (instability measure)',fontsize=28,weight='bold')
 fig.supylabel('Survival fraction',fontsize=28,weight='bold')
 
 #plt.gcf().text(0.45, 0.86,'Avg. interaction strength \n',fontsize=28,horizontalalignment='center',

@@ -76,7 +76,7 @@ class CommunityPropertiesInterface:
                  for lineage in lineages}
        
         # calculate community invasibility/re-invadability between from_which_time and t_end
-        self.invasibility = \
+        self.reinvadability = \
             {'lineage ' + str(lineage) : self.detect_invasibility('lineage ' + str(lineage),
                                                                   from_which_time) \
                  for lineage in lineages}
