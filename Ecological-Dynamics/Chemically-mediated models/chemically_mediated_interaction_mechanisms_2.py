@@ -42,16 +42,17 @@ class two_species_model():
         R = var[2:]
         
         dS = S*np.sum(self.growth*R,axis=1)
-        
-        dR_consumed = np.matmul((self.consumption * self.growth * R).T,
+          
+        dR_consumed = np.matmul((self.consumption * R).T,
                                 S.reshape(len(S),1))[:,0]
         
         def production_rate(i):
             
             production_i = self.production[:,i,:]
+            
             production_rate = \
-                np.sum(np.sum(production_i * self.growth * self.consumption * R, axis = 1) * S)
-             
+                np.sum(np.sum(production_i * self.consumption * R, axis = 1) * S)
+            
             return production_rate
             
         dR_produced = np.array([production_rate(i) for i in range(len(R))])
@@ -83,14 +84,14 @@ class two_species_model_saturating_effects():
         dS = S*np.sum(self.growth*(R/(self.K+R)),axis=1)
         
         dR_consumed = \
-            np.matmul((self.consumption * self.growth * (R/(self.K+R))).T,
+            np.matmul((self.consumption * (R/(self.K+R))).T,
                       S.reshape(len(S),1))[:,0]
         
         def production_rate(i):
             
             production_i = self.production[:,i,:]
             production_rate = \
-                np.sum(np.sum(production_i * self.growth * self.consumption * (R/(self.K+R)), axis = 1) * S)
+                np.sum(np.sum(production_i * self.consumption * (R/(self.K+R)), axis = 1) * S)
             
             return production_rate
             
@@ -432,8 +433,8 @@ fig.supylabel(r'$log_2\left(\frac{\text{abundance of species i in coculture}}{\t
 
 sns.despine()
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/speciesinteractions.png",
-            dpi=300,bbox_inches='tight')
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/speciesinteractions.png",
+#            dpi=300,bbox_inches='tight')
 
 ####################
 
@@ -497,8 +498,8 @@ fig.supylabel(r'$log_2\left(\frac{\text{abundance of species i in coculture}}{\t
 
 sns.despine()
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/speciesinteractions_saturating.png",
-            dpi=300,bbox_inches='tight')
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/speciesinteractions_saturating.png",
+#            dpi=300,bbox_inches='tight')
 
 #######################################
 
@@ -568,10 +569,12 @@ fig.suptitle('Non-reciprocal cross-feeding can initially boost growth but reduce
 plt.legend(['_','_','Monoculture','Coculture'], fontsize=12, 
            bbox_to_anchor=(1.0, 0.1), loc="center left")
 
+plt.ylim([0,4])
+
 sns.despine()
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/speciesinteractions_overtime.png",
-            dpi=300,bbox_inches='tight')
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/speciesinteractions_overtime.png",
+#            dpi=300,bbox_inches='tight')
 
 #%%
 
