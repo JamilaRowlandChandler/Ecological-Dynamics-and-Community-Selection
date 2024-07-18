@@ -5,6 +5,7 @@ Created on Mon Jul  1 13:54:13 2024
 @author: jamil
 """
 
+
 # cd C:\Users\jamil\Documents\PhD\GitHub projects\Ecological-Dynamics-and-Community-Selection\Ecological-Dynamics\Chemically-mediated models
 
 import numpy as np
