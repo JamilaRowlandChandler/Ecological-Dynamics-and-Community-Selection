@@ -36,6 +36,8 @@ class two_species_model():
         self.outflux = outflux
         
     def __call__(self,t,var):   
+        
+        breakpoint()
     
         # 2 species, n mediators
          
@@ -43,9 +45,8 @@ class two_species_model():
         R = var[2:]
         
         dS = S*np.sum(self.growth*R,axis=1)
-          
-        dR_consumed = np.matmul((self.consumption * R).T,
-                                S.reshape(len(S),1))[:,0]
+        
+        dR_consumed = R*np.sum(self.consumption*S,axis=1)
         
         def production_rate(i):
             
@@ -84,9 +85,7 @@ class two_species_model_saturating_effects():
         
         dS = S*np.sum(self.growth*(R/(self.K+R)),axis=1)
         
-        dR_consumed = \
-            np.matmul((self.consumption * (R/(self.K+R))).T,
-                      S.reshape(len(S),1))[:,0]
+        dR_consumed = R*np.sum(self.consumption * (R/(self.K+R)) * S,axis=1)
         
         def production_rate(i):
             
