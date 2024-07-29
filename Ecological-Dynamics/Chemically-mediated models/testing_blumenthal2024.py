@@ -34,13 +34,21 @@ def dCR_dt(t,var,
     species = var[:no_species]
     resources = var[no_species:]
     
-    dSdt = species * (np.sum(growth * resources, axis = 1) - death) + 10**-8
+    #dSdt = species * (np.sum(growth * resources, axis = 1) - death) + 10**-8
     
     #dRdt = resources * (influx - resources) - \
     #    resources * np.sum(growth.T * consumption * species, axis = 1) + 10**-8
     
-    dRdt = influx - \
-        resources * np.sum(growth.T * consumption * species, axis = 1)
+    #dRdt = influx - \
+    #    resources * np.sum(growth.T * consumption * species, axis = 1)
+    
+    dSdt = species * (np.sum(growth * (resources/(1 + resources)), axis = 1) - death) + 10**-8
+    
+    dRdt = resources * (influx - resources) - \
+        (resources/(1 + resources)) * np.sum(growth.T * consumption * species, axis = 1) + 10**-8
+    
+    #dRdt = influx - resources - \
+    #    (resources/(1 + resources)) * np.sum(growth.T * consumption * species, axis = 1) + 10**-8
     
     return np.concatenate((dSdt, dRdt))
 
@@ -64,7 +72,7 @@ def closeness_to_competitive_exclusion(no_species, no_resources,
                                                     dims = (no_resources, no_species))
         
         initial_abundances = np.random.uniform(0.1,1,no_species)
-        initial_concentrations = np.random.uniform(1,2,no_resources)
+        initial_concentrations = np.random.uniform(0.1,1,no_resources)
         
         simulation = solve_ivp(dCR_dt, [0, 3000], 
                                np.concatenate((initial_abundances, initial_concentrations)),
@@ -87,7 +95,7 @@ def closeness_to_competitive_exclusion(no_species, no_resources,
                     'Resource diversity' : resource_diversity,
                     'Simulation' : simulation}
     
-    diversity_data_unclean = [resource_species_diversity() for _ in range(10)]
+    diversity_data_unclean = [resource_species_diversity() for _ in range(100)]
     diversity_data = list(filter(lambda item: item is not None, diversity_data_unclean))
     
     satisfies_competitive_exclusion = [community for community in diversity_data
@@ -104,7 +112,7 @@ no_species = 100
 no_resources = 50
 
 death = np.ones(no_species)
-influx = 0.1*np.ones(no_resources)
+influx = np.ones(no_resources)
 
 growth_stats = {'mu' : 1, 'sigma' : 0.3}
 consumption_stats = {'mu' : 0.9, 'sigma' : 0.2}
@@ -122,15 +130,15 @@ fig, (ax1, ax2) = plt.subplots(1, 2, sharex = True, layout = 'constrained')
 
 fig.supxlabel('time')
 
-ax1.plot(violates_competitive_exclusion[0]['Simulation'].t,
-         violates_competitive_exclusion[0]['Simulation'].y[:no_species,:].T)
+ax1.plot(violates_competitive_exclusion[1]['Simulation'].t,
+         violates_competitive_exclusion[1]['Simulation'].y[:no_species,:].T)
 ax1.set_ylabel('species abundance')
-#ax1.set_ylim([0,1])
+ax1.set_xlim([1000,2000])
 
-ax2.plot(violates_competitive_exclusion[0]['Simulation'].t,
-         violates_competitive_exclusion[0]['Simulation'].y[no_species:,:].T)
+ax2.plot(violates_competitive_exclusion[1]['Simulation'].t,
+         violates_competitive_exclusion[1]['Simulation'].y[no_species:,:].T)
 ax2.set_ylabel('resource abundance')
-#ax2.set_ylim([0,1])
+ax2.set_xlim([1000,2000])
 
 #%%
 
@@ -138,15 +146,15 @@ fig, (ax1, ax2) = plt.subplots(1, 2, sharex = True, layout = 'constrained')
 
 fig.supxlabel('time')
 
-ax1.plot(satisfies_competitive_exclusion[7]['Simulation'].t,
-         satisfies_competitive_exclusion[7]['Simulation'].y[:no_species,:].T)
+ax1.plot(satisfies_competitive_exclusion[9]['Simulation'].t,
+         satisfies_competitive_exclusion[9]['Simulation'].y[:no_species,:].T)
 ax1.set_ylabel('species abundance')
-#ax1.set_ylim([0,1])
+#ax1.set_ylim([0,0.2])
 
-ax2.plot(satisfies_competitive_exclusion[7]['Simulation'].t,
-         satisfies_competitive_exclusion[7]['Simulation'].y[no_species:,:].T)
+ax2.plot(satisfies_competitive_exclusion[9]['Simulation'].t,
+         satisfies_competitive_exclusion[9]['Simulation'].y[no_species:,:].T)
 ax2.set_ylabel('resource abundance')
-#ax2.set_ylim([0,1])
+#ax2.set_ylim([0,0.2])
 
 #%%
 
@@ -223,3 +231,82 @@ plt.scatter(np.concatenate([np.array(f_coeff_v),np.array(f_coeff_s)]),
             r_diversity)
 print(pearsonr(np.concatenate([np.array(f_coeff_v),np.array(f_coeff_s)]),
                r_diversity))
+
+
+#%%
+
+def dCR_dt_noinflux(t,var,
+           no_species,
+           growth, death, consumption):
+    
+    #breakpoint()
+    
+    var[var < 1e-9] = 0
+    
+    species = var[:no_species]
+    resources = var[no_species:]
+    
+    #dSdt = species * (np.sum(growth * resources, axis = 1) - death) + 10**-8
+    
+    #dRdt = resources * (influx - resources) - \
+    #    resources * np.sum(growth.T * consumption * species, axis = 1) + 10**-8
+    
+    #dRdt = influx - \
+    #    resources * np.sum(growth.T * consumption * species, axis = 1)
+    
+    dSdt = species * (np.sum(growth * (resources/(1 + resources)), axis = 1) - death) + 10**-8
+    
+    dRdt = - (resources/(1 + resources)) * np.sum(growth.T * consumption * species, axis = 1) + 10**-8
+    
+    #dRdt = influx - resources - \
+    #    (resources/(1 + resources)) * np.sum(growth.T * consumption * species, axis = 1) + 10**-8
+    
+    return np.concatenate((dSdt, dRdt))
+
+#%%
+
+no_species = 100
+no_resources = 50
+
+death = 0.05*np.ones(no_species)
+growth = normal_distributed_parameters(1, 0.3, (no_species, no_resources))
+consumption = normal_distributed_parameters(0.9, 0.2, (no_resources, no_species))
+
+initial_abundances = np.random.uniform(0.1,1,no_species)
+resource_input = 0.5*np.ones(no_resources)
+
+times = []
+abundances = []
+
+for i in range(1000):
+    
+    simulation = solve_ivp(dCR_dt_noinflux, [0, 25], 
+                           np.concatenate((initial_abundances, resource_input)),
+                           args = (no_species, growth, death, consumption),
+                           method = 'LSODA')
+    
+    times.append(simulation.t[-1])
+    abundances.append(simulation.y[:,-1])
+    
+    initial_abundances = simulation.y[:no_species,-1]
+ 
+#%%
+
+#combined_times = np.cumsum(np.concatenate(times))
+combined_times = np.arange(25,25*1001,25)
+combined_abundances = np.column_stack(abundances)
+
+#%%
+
+fig, (ax1, ax2) = plt.subplots(1, 2, sharex = True, layout = 'constrained')
+
+fig.supxlabel('time')
+
+ax1.plot(combined_times, combined_abundances[:no_species,:].T)
+ax1.set_ylabel('species abundance')
+#ax1.set_ylim([0,1.25])
+#ax1.set_xlim([1000,2000])
+
+#ax2.plot(combined_times, combined_abundances[no_species:,:].T)
+#ax2.set_ylabel('resource abundance')
+
