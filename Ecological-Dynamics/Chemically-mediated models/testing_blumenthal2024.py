@@ -24,7 +24,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from scipy.integrate import solve_ivp
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, spearmanr
 from scipy.signal import find_peaks
 from scipy.signal import peak_prominences
 import pickle
@@ -226,6 +226,8 @@ def detect_invasibility(simulation_t, simulation_y,
 
     return proportion_fluctuating_reinvading_species
 
+#%%
+
 
 def find_normalised_peaks(data):
     '''
@@ -273,7 +275,7 @@ def find_normalised_peaks(data):
 def community_simulations(average_consumptions):
 
     no_species_to_test = np.array(
-        [4, 7, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100])
+        [4, 10, 30, 50, 75, 100])
 
     no_communities = 50
 
@@ -282,8 +284,11 @@ def community_simulations(average_consumptions):
 
         print({'Average consumption': average_consumption, 'No. species': no_species})
 
+        #growth = normal_distributed_parameters(
+        #    1, 0.05, (no_species, no_resources))
+        
         growth = normal_distributed_parameters(
-            1, 0.05, (no_species, no_resources))
+            1, 0.15, (no_species, no_resources))
         death = np.ones(no_species)
         influx = np.ones(no_resources)
 
@@ -293,15 +298,15 @@ def community_simulations(average_consumptions):
             consumption = normal_distributed_parameters(**consumption_stats,
                                                         dims=(no_resources, no_species))
 
-            initial_abundances = np.random.uniform(0.1, 1, no_species)
-            initial_concentrations = np.random.uniform(0.1, 1, no_resources)
+            initial_abundances = np.random.uniform(10**-10, 2/no_species, no_species)
+            initial_concentrations = np.random.uniform(10**-10, 2/no_species, no_resources)
 
-            first_simulation = solve_ivp(dCR_dt, [0, 1000],
+            first_simulation = solve_ivp(dCR_dt, [0, 500],
                                          np.concatenate(
                                              (initial_abundances, initial_concentrations)),
                                          args=(no_species, growth, death,
                                                consumption, influx),
-                                         method='LSODA', rtol=1e-6, atol=1e-9)
+                                         method='RK45', rtol=1e-14, atol=1e-14)
 
             new_initial_conditions = first_simulation.y[:, -1]
 
@@ -316,7 +321,7 @@ def community_simulations(average_consumptions):
                                              new_initial_conditions,
                                              args=(no_species, growth,
                                                    death, consumption, influx),
-                                             method='LSODA', rtol=1e-5, atol=1e-8)
+                                             method='RK45', rtol=1e-14, atol=1e-14)
 
                 if np.any(np.log(np.abs(final_simulation.y[:, -1])) > 6) \
                     or np.isnan(np.log(np.abs(final_simulation.y[:, -1]))).any():
@@ -375,19 +380,19 @@ def pickle_dump(filename, data):
 
 
 simulations_09 = community_simulations(np.array([0.9]))
-pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_09.pkl",
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_09_2.pkl",
             simulations_09)
 
 # %%
 
 simulations_06 = community_simulations(np.array([0.6]))
-pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_06.pkl",
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_06_2.pkl",
             simulations_06)
 
 # %%
 
 simulations_11 = community_simulations(np.array([1.1]))
-pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_11.pkl",
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_11_2.pkl",
             simulations_11)
 
 #%%
@@ -436,21 +441,21 @@ def plot_diversity_invasbility(data, x, y, xlabel, ylabel):
     bounds = np.append(np.sort(np.unique(data[0]['Number of species'])),100)
     norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-    fig, axs = plt.subplots(1,3,sharex=True,sharey=True,figsize=(8.5,5),layout='constrained')
-    fig.suptitle('Avg. interaction strength',fontsize=24,weight='bold')
-    fig.supxlabel(xlabel,fontsize=24,weight='bold')
-    fig.supylabel(ylabel,fontsize=24,weight='bold', multialignment='center')
+    fig, axs = plt.subplots(1,3,sharex=True,sharey=True,figsize=(11,5),layout='constrained')
+    fig.suptitle('Avg. consumption rate',fontsize=28,weight='bold')
+    fig.supxlabel(xlabel,fontsize=28,weight='bold')
+    fig.supylabel(ylabel,fontsize=28,weight='bold', multialignment='center')
 
     clb = plt.colorbar(plt.cm.ScalarMappable(norm=norm, cmap=cmap),ax=axs,shrink=1.6,
                        pad=0.05)
     clb.ax.set_title('Species pool \n size',fontsize=22,weight='bold',pad=7.5)
     
-    plt.gcf().text(0.25, 0.8, '0.6',fontsize=18,horizontalalignment='center',
-                   verticalalignment='center')
-    plt.gcf().text(0.51, 0.8, '0.9',fontsize=18,horizontalalignment='center',
-                   verticalalignment='center')
-    plt.gcf().text(0.775, 0.8, '1.1',fontsize=18,horizontalalignment='center',
-                   verticalalignment='center')
+    #plt.gcf().text(0.25, 0.8, '0.6',fontsize=18,horizontalalignment='center',
+    #               verticalalignment='center')
+    #plt.gcf().text(0.51, 0.8, '0.9',fontsize=18,horizontalalignment='center',
+    #               verticalalignment='center')
+    #plt.gcf().text(0.775, 0.8, '1.1',fontsize=18,horizontalalignment='center',
+    #               verticalalignment='center')
     
     for i, ax in enumerate(axs.flatten()):
         
@@ -523,9 +528,9 @@ plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dyna
 
 # %%
 
-print(pearsonr(data_09['Reinvadability (species)'],
+print(spearmanr(data_09['Reinvadability (species)'],
                data_09['Closeness to competitive exclusion']))
-print(pearsonr(data_11['Reinvadability (species)'],
+print(spearmanr(data_11['Reinvadability (species)'],
                data_11['Closeness to competitive exclusion']))
 
 # %%
@@ -748,7 +753,7 @@ plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dyna
 fig3, axs3 = plot_diversity_invasbility([data_06, data_09, data_11], 'Reinvadability rescaled (species)',
                            'Closeness to competitive exclusion',
                            'Re-invadability\n(instability measure)',
-                           'Closeness to\ncompetitive exclusion')
+                           r'$\frac{\text{species diversity}}{\text{resource diversity}}$')
 
 axs3.flatten()[0].set_ylim([0,1.25])
 
@@ -765,10 +770,32 @@ plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dyna
 
 #%%
 
-print(pearsonr(data_09['Reinvadability rescaled (species)'],
+print(spearmanr(data_09['Reinvadability rescaled (species)'],
                data_09['Closeness to competitive exclusion']))
-print(pearsonr(data_11['Reinvadability rescaled (species)'],
+print(spearmanr(data_11['Reinvadability rescaled (species)'],
                data_11['Closeness to competitive exclusion']))
+
+#%%
+
+unique_species_pool = np.unique(data_11['Number of species'])
+
+print({str(no_spec) : spearmanr(data_11.iloc[np.where(data_11['Number of species'] == no_spec)]['Reinvadability (species)'],
+               data_11.iloc[np.where(data_11['Number of species'] == no_spec)]['Closeness to competitive exclusion'])
+       for no_spec in unique_species_pool})
+
+print({str(no_spec) : spearmanr(data_11.iloc[np.where(data_11['Number of species'] == no_spec)]['Reinvadability (species)'],
+               data_11.iloc[np.where(data_11['Number of species'] == no_spec)]['Diversity (species)'])
+       for no_spec in unique_species_pool})
+
+print({str(no_spec) : spearmanr(data_11.iloc[np.where(data_11['Number of species'] == no_spec)]['Reinvadability (species)'],
+               data_11.iloc[np.where(data_11['Number of species'] == no_spec)]['Diversity (resources)'])
+       for no_spec in unique_species_pool})
+
+#%%
+
+print({str(no_spec) : spearmanr(data_09.iloc[np.where(data_09['Number of species'] == no_spec)]['Reinvadability (species)'],
+               data_09.iloc[np.where(data_09['Number of species'] == no_spec)]['Closeness to competitive exclusion'])
+       for no_spec in unique_species_pool})
 
 #%%
 
@@ -868,3 +895,358 @@ sns.despine(fig=None, ax=None, top=True, right=True, left=False, bottom=True, of
 
 plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/cr_instability_freq.png",
             dpi=300,bbox_inches='tight')
+
+#%%
+
+colourmap_base = mpl.colormaps['viridis_r'](0.99)
+light_dark_range = np.linspace(0.66,0,3)
+lighten_func = lambda val, i : val + i*(1-val)
+colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
+                for i in light_dark_range]
+cmap = mpl.colors.ListedColormap(colours_list)
+
+sns.set_style('white')
+
+fig, axs = plt.subplots(2,1, figsize=(4.5,4), layout='constrained', height_ratios=[1, 0.1])
+fig.suptitle('Prevalance of non-equilibrium\ncommunity dynamics',fontsize=24,weight='bold')
+fig.supylabel('Frequency Density',fontsize=18, multialignment='center')
+
+subfig0 = sns.histplot(pd.concat([data_06, data_09, data_11]),
+                       x = 'Reinvadability rescaled (species)',
+                       hue = 'Average consumption rate', bins = 30,
+                       element = 'step', stat="density", common_norm=False, cumulative = True,
+                       fill = False, palette = cmap, ax = axs.flatten()[0],
+                       linewidth = 3)
+
+subfig0_break = sns.histplot(pd.concat([data_06, data_09, data_11]),
+                       x = 'Reinvadability rescaled (species)',
+                       hue = 'Average consumption rate', bins = 30,
+                       element = 'step', stat="density", common_norm=False, cumulative = True,
+                       fill = False, palette = cmap, ax = axs.flatten()[1],
+                       linewidth = 2)
+axs.flatten()[1].axhline(0.0039,color='black',linewidth=0.8)
+
+axs.flatten()[0].get_xaxis().set_visible(False)
+
+subfig0.set_ylim([0.7,1.01])
+subfig0_break.set_ylim([0,0.1])
+subfig0.set_xlim([-0.01,1.01])
+subfig0_break.set_xlim([-0.01,1.01])
+
+subfig0_break.set_xticks(range(2))
+subfig0.set_yticks([0.7,1])
+subfig0_break.set_yticks(range(1))
+
+for ax in axs.flatten():
+    
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
+    
+for ax in axs.flatten():
+
+    ax.set_ylabel('')
+
+axs.flatten()[0].set_xlabel('')
+axs.flatten()[1].set_xlabel('Reinvadability\n(instability measure)', fontsize=18)
+
+for ax in axs.flatten():
+
+    ax.get_legend().remove()
+
+d = 0.01  # how big to make the diagonal lines in axes coordinates
+# arguments to pass to plot, just so we don't keep repeating them
+kwargs = dict(transform=axs.flatten()[0].transAxes, color="k", clip_on=False)
+
+axs.flatten()[0].plot((-d, +d), (-d, +d), **kwargs)
+kwargs.update(transform=axs.flatten()[1].transAxes)  
+axs.flatten()[1].plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+sns.despine(fig=None, ax=None, top=True, right=True, left=False, bottom=True, offset=None, trim=False)
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/cr_instability_freq2.png",
+            dpi=300,bbox_inches='tight')
+
+#%%
+
+mu = 0.6
+sigma = 0.15
+
+no_species = 250
+no_resources = 250
+
+influx = np.ones(no_resources)
+death = np.ones(no_species)
+consumption = np.abs(normal_distributed_parameters(1, 0.01,
+                                            dims=(no_resources, no_species)))
+
+growth = np.abs(normal_distributed_parameters(mu/no_resources, sigma/np.sqrt(no_resources),
+                                            dims=(no_species, no_resources)))
+
+initial_abundances = np.random.uniform(0.1, 1, no_species)
+initial_concentrations = np.random.uniform(0.1, 1, no_resources)
+
+simulation = solve_ivp(dCR_dt, [0, 12500],
+                       np.concatenate(
+                           (initial_abundances, initial_concentrations)),
+                       args=(no_species, growth, death,
+                             consumption, influx),
+                       method='LSODA', rtol=1e-6, atol=1e-9)
+
+#%%
+
+plt.plot(simulation.t, simulation.y[:no_species, :].T)
+
+
+#%%
+
+def thermodynamic_threshold_dynamics(mu, sigma):
+    
+    no_species = 100
+    no_resources = 100
+    
+    influx = np.ones(no_resources)
+    death = np.ones(no_species)
+    
+    no_communities = 50
+   
+    def simulate_community(i, no_species, no_resources,
+                           death, influx, mu, sigma):
+        
+        print('Community', i, '\n')
+        
+        growth = np.abs(normal_distributed_parameters(1, sigma/np.sqrt(no_resources),
+                                                    dims=(no_species, no_resources)))
+        
+        consumption = np.abs(normal_distributed_parameters(mu/no_resources, sigma/np.sqrt(no_resources),
+                                                    dims=(no_resources, no_species)))
+        
+        initial_abundances = np.random.uniform(10**-10, 2/no_species, no_species)
+        initial_concentrations = np.random.uniform(10**-10, 2/no_species, no_resources)
+
+        first_simulation = solve_ivp(dCR_dt, [0, 500],
+                                     np.concatenate(
+                                         (initial_abundances, initial_concentrations)),
+                                     args=(no_species, growth, death,
+                                           consumption, influx),
+                                     method='RK45', rtol=1e-14, atol=1e-14)
+
+        new_initial_conditions = first_simulation.y[:, -1]
+
+        if np.any(np.log(np.abs(new_initial_conditions)) > 6) \
+            or np.isnan(np.log(np.abs(new_initial_conditions))).any():
+
+            return None
+
+        else:
+
+            final_simulation = solve_ivp(dCR_dt, [0, 3000],
+                                         new_initial_conditions,
+                                         args=(no_species, growth,
+                                               death, consumption, influx),
+                                         method='RK45', rtol=1e-14, atol=1e-14)
+
+            if np.any(np.log(np.abs(final_simulation.y[:, -1])) > 6) \
+                or np.isnan(np.log(np.abs(final_simulation.y[:, -1]))).any():
+
+                return None
+
+            else:
+
+                species_reinvadability = rescaled_detect_invasability(final_simulation.t, final_simulation.y[:no_species, :],
+                                                                      2000)
+                resource_reinvadability = rescaled_detect_invasability(final_simulation.t, final_simulation.y[:no_species, :],
+                                                                       2000)
+                
+                species_fluctuations = fluctuation_coefficient(final_simulation.t, final_simulation.y[:no_species, :])
+                resource_fluctuations = fluctuation_coefficient(final_simulation.t, final_simulation.y[no_species:, :])
+                
+                last_500_t = np.argmax(final_simulation.t > 2500)
+                species_diversity = \
+                    np.count_nonzero(np.any(final_simulation.y[:no_species, last_500_t:] > 1e-3,
+                                            axis=1))/no_species
+                resource_diversity =  \
+                    np.count_nonzero(np.any(final_simulation.y[no_species:, last_500_t:] > 1e-3,
+                                            axis=1))/no_resources
+
+                return [final_simulation, species_reinvadability, resource_reinvadability,
+                        species_fluctuations, resource_fluctuations, species_diversity,
+                        resource_diversity]
+
+    messy_list = [simulate_community(i, no_species, no_resources, death,
+                                     influx, mu, sigma)
+                  for i in range(no_communities)]
+    cleaned_messy_list = list(
+        filter(lambda item: item is not None, messy_list))
+
+    return {'Simulations': [item[0] for item in cleaned_messy_list],
+            'Species Reinvadability': [item[1] for item in cleaned_messy_list],
+            'Resource Reinvadability': [item[2] for item in cleaned_messy_list],
+            'Species Fluctuation CV': [item[3] for item in cleaned_messy_list],
+            'Resource Fluctuation CV': [item[4] for item in cleaned_messy_list],
+            'Species diversity': [item[5] for item in cleaned_messy_list],
+            'Resource diversity': [item[6] for item in cleaned_messy_list]}
+
+#%%
+
+print(0.9, 0.15)
+communities_09_015 = thermodynamic_threshold_dynamics(0.9, 0.15)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_09015.pkl",
+            communities_09_015)
+print(1.1, 0.15)
+communities_11_015 = thermodynamic_threshold_dynamics(1.1, 0.15)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_11015.pkl",
+            communities_11_015)
+print(0.7, 0.15)
+communities_07_015 = thermodynamic_threshold_dynamics(0.7, 0.15)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_07015.pkl",
+            communities_07_015)
+print(0.5, 0.15)
+communities_05_015 = thermodynamic_threshold_dynamics(0.5, 0.15)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_05015.pkl",
+            communities_05_015)
+print(0.3, 0.15)
+communities_03_015 = thermodynamic_threshold_dynamics(0.3, 0.15)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_03015.pkl",
+            communities_03_015)
+
+#%%
+
+print(0.9, 0.05)
+communities_09_005 = thermodynamic_threshold_dynamics(0.9, 0.05)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_09005.pkl",
+            communities_09_005)
+print(1.1, 0.05)
+communities_11_005 = thermodynamic_threshold_dynamics(1.1, 0.05)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_11005.pkl",
+            communities_11_005)
+print(0.7, 0.05)
+communities_07_005 = thermodynamic_threshold_dynamics(0.7, 0.05)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_07005.pkl",
+            communities_07_005)
+print(0.5, 0.05)
+communities_05_005 = thermodynamic_threshold_dynamics(0.5, 0.05)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_05005.pkl",
+            communities_05_005)
+print(0.3, 0.05)
+communities_03_005 = thermodynamic_threshold_dynamics(0.3, 0.05)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_03005.pkl",
+            communities_03_005)
+
+#%%
+
+print(0.9, 0.1)
+communities_09_01 = thermodynamic_threshold_dynamics(0.9, 0.1)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0901.pkl",
+            communities_09_01)
+print(1.1, 0.1)
+communities_11_01 = thermodynamic_threshold_dynamics(1.1, 0.1)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_1101.pkl",
+            communities_11_01)
+print(0.7, 0.1)
+communities_07_01 = thermodynamic_threshold_dynamics(0.7, 0.1)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0701.pkl",
+            communities_07_01)
+print(0.5, 0.1)
+communities_05_01 = thermodynamic_threshold_dynamics(0.5, 0.1)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0501.pkl",
+            communities_05_01)
+print(0.3, 0.1)
+communities_03_01 = thermodynamic_threshold_dynamics(0.3, 0.1)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0301.pkl",
+            communities_03_01)
+
+#%%
+
+print(0.9, 0.2)
+communities_09_02 = thermodynamic_threshold_dynamics(0.9, 0.2)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0902.pkl",
+            communities_09_02)
+print(1.1, 0.2)
+communities_11_02 = thermodynamic_threshold_dynamics(1.1, 0.2)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_1102.pkl",
+            communities_11_02)
+print(0.7, 0.2)
+communities_07_02 = thermodynamic_threshold_dynamics(0.7, 0.2)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0702.pkl",
+            communities_07_02)
+print(0.5, 0.2)
+communities_05_02 = thermodynamic_threshold_dynamics(0.5, 0.2)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0502.pkl",
+            communities_05_02)
+#%%
+print(0.3, 0.2)
+communities_03_02 = thermodynamic_threshold_dynamics(0.3, 0.2)
+pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0302.pkl",
+            communities_03_02)
+
+# %%
+
+def create_df(simulation_data, mu_consumption, sigma_consumption):
+    
+    closeness_to_competitive_exclusion = \
+        np.array(simulation_data['Species diversity'])/np.array(simulation_data['Resource diversity'])
+    
+    data_length = len(simulation_data['Resource diversity'])
+       
+    annot_no_species = np.repeat(100, data_length)
+    annot_mu = np.repeat(mu_consumption, data_length)
+    annot_sigma = np.repeat(sigma_consumption, data_length)
+    
+    data = pd.DataFrame([annot_mu, annot_sigma, annot_no_species, simulation_data['Species Reinvadability'],
+                         simulation_data['Resource Reinvadability'], simulation_data['Species Fluctuation CV'],
+                         simulation_data['Resource Fluctuation CV'], simulation_data['Species diversity'],
+                         simulation_data['Resource diversity'], closeness_to_competitive_exclusion], 
+                        index = ['Average consumption rate', 'Consumption rate std', 'Number of species', 
+                                 'Reinvadability (species)', 'Reinvadability (resources)',
+                                 'Fluctuation CV (species)', 'Fluctuation CV (resources)',
+                                 'Diversity (species)', 'Diversity (resources)',
+                                 'Closeness to competitive exclusion']).T
+    
+    return data
+
+#%%
+
+mu_cs = [0.3,0.5,0.7,0.9,1.1]
+sigma_cs = [0.05,0.1,0.15,0.2]
+
+data_mu_sigma = pd.concat([create_df(simulation_data, mu_consumption, sigma_consumption)
+                           for simulation_data, mu_consumption, sigma_consumption in zip(
+                                   [communities_03_005, communities_05_005, communities_07_005, communities_09_005, communities_11_005,
+                                    communities_03_01, communities_05_01, communities_07_01, communities_09_01, communities_11_01,
+                                    communities_03_015, communities_05_015, communities_07_015, communities_09_015, communities_11_015,
+                                    communities_03_02, communities_05_02, communities_07_02, communities_09_02, communities_11_02],
+                                   np.tile(mu_cs, len(sigma_cs)),
+                                   np.repeat(sigma_cs, len(mu_cs)))])
+
+#%%
+
+def simulate_closer_to_gLV(mu, sigma):
+    
+    no_species = 250
+    no_resources = 250
+    
+    influx = np.ones(no_resources)
+    death = np.ones(no_species)
+    growth = np.abs(normal_distributed_parameters(1, sigma/np.sqrt(no_resources),
+                                                dims=(no_species, no_resources)))
+    
+    consumption = np.abs(normal_distributed_parameters(mu/no_resources, sigma/np.sqrt(no_resources),
+                                                dims=(no_resources, no_species)))
+    
+    initial_abundances = np.random.uniform(0.1, 1, no_species)
+    initial_concentrations = np.random.uniform(0.1, 1, no_resources)
+    
+    simulation = solve_ivp(dCR_dt, [0, 12500],
+                           np.concatenate(
+                               (initial_abundances, initial_concentrations)),
+                           args=(no_species, growth, death,
+                                 consumption, influx),
+                           method='LSODA', rtol=1e-6, atol=1e-9)
+    
+    return simulation
+
+#%%
+
+weak_interactions = [simulate_closer_to_gLV(0.1, 0.05) for _ in range(20)]
+strong_interactions = [simulate_closer_to_gLV(0.9, 0.15) for _ in range(20)]
+

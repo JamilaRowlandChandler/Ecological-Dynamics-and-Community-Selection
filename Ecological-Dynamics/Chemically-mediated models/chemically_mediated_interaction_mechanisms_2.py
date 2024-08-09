@@ -37,16 +37,15 @@ class two_species_model():
         
     def __call__(self,t,var):   
         
-        breakpoint()
-    
         # 2 species, n mediators
-         
+        
         S = var[:2]
         R = var[2:]
         
-        dS = S*np.sum(self.growth*R,axis=1)
+        #dS = S*np.sum(self.growth*R,axis=1)
+        dS = S*np.sum(self.growth*self.consumption*R,axis=1)
         
-        dR_consumed = R*np.sum(self.consumption*S,axis=1)
+        dR_consumed = R*np.sum(self.consumption.T*S,axis=1)
         
         def production_rate(i):
             
@@ -79,6 +78,8 @@ class two_species_model_saturating_effects():
     def __call__(self,t,var):
         
         # 2 species, n mediators
+        
+        breakpoint()
          
         S = var[:2]
         R = var[2:]
@@ -103,6 +104,117 @@ class two_species_model_saturating_effects():
     
 #%%
 
+def normally_distributed_parameters(mu, sigma, dims):
+    
+    return np.round(mu + sigma*np.random.randn(dims), 2)
+
+def uniformally_distributed_parameters(min_val, max_val, dims):
+    
+    return np.round(np.random.uniform(min_val, max_val, dims), 2)
+
+def bernoulli_distributed_parameters(val, p, dims):
+    
+    return val * np.random.binomial(1, p, size = dims)
+
+#%%
+    
+def generate_parameters(production_distribution_function, production_args,
+                        consumption_distribution_function, consumption_args):
+    
+    metabolic_matrix = np.array([[0,0],[1,0]])
+    consumption_matrix = np.array([[1,0],[1,1]])
+    
+    energies = np.array([1,0.5])
+    
+    def sample_parameters(distribution_function, kwargs):
+    
+        match distribution_function:
+            
+            case 'normal':
+                
+                parameters = normally_distributed_parameters(**kwargs)
+                
+            case 'uniform':
+                
+                parameters = uniformally_distributed_parameters(**kwargs)
+                
+            case 'bernoulli':
+                
+                parameters = bernoulli_distributed_parameters(**kwargs)
+                
+        return parameters
+    
+    consumption = np.array([sample_parameters(c_d_func, c_args)
+                            for c_d_func, c_args in zip(consumption_distribution_function, consumption_args)]).reshape((2,2)) * consumption_matrix
+    
+    production = [np.array([sample_parameters(p_d_func, p_args)
+                           for p_d_func, p_args in zip(production_distribution_function, production_args)]).reshape((2,2)) * metabolic_matrix,
+                  np.zeros((2,2))]
+    
+    growth = consumption_matrix * np.array([energies - np.sum((prod.T * energies).T, axis = 0) 
+                                            for prod in production])
+    
+    if np.any(growth < 0) or np.any(consumption < 0) or np.any(consumption < 0):
+        
+        raise Exception('Parameter values cannot be negative.')
+    
+    return {'growth' : growth, 'consumption' : consumption, 'production' : np.array(production)}
+
+#%%
+
+def cross_feeding(model,
+                  consumption_distribution_function, consumption_args,
+                  production_distribution_function, production_args, 
+                  **kwargs):
+    
+    ########## Parameters ###########
+    
+    growth_consumption_production = [generate_parameters(production_distribution_function, production_args,
+                                                          consumption_distribution_function, consumption_args)
+                                       for _ in range(10)]
+    
+    influx = np.zeros(2)
+    outflux = np.zeros(2)
+    
+    ######## Simulate community dynamics ##################
+    
+    def initialise_and_simulate(model,
+                                growth, consumption, production, influx, outflux,
+                                initial_conditions,
+                                **kwargs):
+        
+        dSR_dt = model(growth,consumption,production,influx,outflux,**kwargs)
+        
+        return solve_ivp(dSR_dt, [0, 40], initial_conditions, max_step = 0.25,
+                         method = 'RK45', rtol = 2.5e-14, atol = 2.5e-14)
+ 
+    monoculture_1 = [initialise_and_simulate(model = model, influx = influx, outflux = outflux,
+                                             initial_conditions = [0.1,0,10,0],
+                                             **params) 
+                     for params in growth_consumption_production]
+    
+    monoculture_2 = [initialise_and_simulate(model = model, influx = influx, outflux = outflux,
+                                             initial_conditions = [0,0.1,10,0],
+                                             **params) 
+                     for params in growth_consumption_production]
+    
+    coculture = [initialise_and_simulate(model = model, influx = influx, outflux = outflux,
+                                             initial_conditions = [0.1,0.1,10,0],
+                                             **params) 
+                     for params in growth_consumption_production]
+    
+    simulations = {'Monoculture 1' : monoculture_1,
+                   'Monoculture 2': monoculture_2,
+                   'Coculture': coculture}
+    
+    species_interaction_df = species_interactions(simulations, 40)
+    
+    return {'Simulations' : simulations, 'Dataframe' : species_interaction_df,
+            'Parameters' : growth_consumption_production}
+
+    
+#%%
+
 def simulate_dynamics(model,
                       fixed_growth,variable_growth,consumption,production,
                       influx,outflux,
@@ -115,7 +227,8 @@ def simulate_dynamics(model,
         
         dSR_dt = model(growth,consumption,production,influx,outflux,**kwargs)
         
-        return solve_ivp(dSR_dt, [0, t_end], initial_conditions, max_step = 0.25)
+        return solve_ivp(dSR_dt, [0, t_end], initial_conditions, max_step = 0.25,
+                         method = 'RK45', rtol = 1e-14, atol = 1e-14)
 
     monoculture_fixed = initialise_and_simulate(np.array([fixed_growth,variable_growth[:,0]]),
                                                          [0.1,0,10,0])
@@ -136,7 +249,8 @@ def simulate_dynamics(model,
 
 def species_interactions(simulations,time):
     
-    monoculture_1_yield = simulations['Monoculture 1'].y[0,np.abs(simulations['Monoculture 1'].t-time).argmin()]
+    monoculture_1_yield = np.array([simulation.y[1,np.abs(simulation.t-time).argmin()] 
+                                     for simulation in simulations['Monoculture 1']])
     monoculture_2_yields = np.array([simulation.y[1,np.abs(simulation.t-time).argmin()] 
                                      for simulation in simulations['Monoculture 2']])
     
@@ -144,6 +258,8 @@ def species_interactions(simulations,time):
                                      for simulation in simulations['Coculture']])
     coculture_2_yields = np.array([simulation.y[1,np.abs(simulation.t-time).argmin()] 
                                      for simulation in simulations['Coculture']])
+    
+    breakpoint()
     
     coculture_effect_on_1 = np.log2(coculture_1_yields/monoculture_1_yield)
     coculture_effect_on_2 = np.log2(coculture_2_yields/monoculture_2_yields)
@@ -160,6 +276,28 @@ def species_interactions(simulations,time):
                              'Coculture effect (2)',]).T
     
     return df
+
+#%%
+
+n = 25
+
+variable_consumption = np.linspace(0.1,0.5,n)
+
+consumption_distribution_function = ['normal', 'normal', 'normal', 'uniform']
+production_distribution_function = ['uniform', 'uniform', 'uniform', 'uniform']
+
+production_args = [{'min_val' : 0, 'max_val' : 0, 'dims' : 1},
+                   {'min_val' : 0, 'max_val' : 0, 'dims' : 1},
+                   {'min_val' : 0, 'max_val' : 0.8, 'dims' : 1},
+                   {'min_val' : 0, 'max_val' : 0, 'dims' : 1}]
+
+simulations_binned_production_consumption = {str(c_val) : cross_feeding(two_species_model,
+                                                                        consumption_distribution_function,
+                                                                        [{'mu' : c_val, 'sigma' : 0,  'dims' : 1}, {'mu' : 0, 'sigma' : 0,  'dims' : 1},
+                                                                         {'mu' : 0.01, 'sigma' : 0,  'dims' : 1}, {'min_val' : 0, 'max_val' : 1, 'dims' : 1}],
+                                                                        production_distribution_function,
+                                                                        production_args)
+                                             for c_val in variable_consumption}
 
 #%%
 

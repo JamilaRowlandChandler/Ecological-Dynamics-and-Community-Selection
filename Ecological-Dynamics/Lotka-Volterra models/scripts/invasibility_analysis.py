@@ -194,7 +194,7 @@ with tqdm(total=4*10*16*10) as pbar:
             for communities_no_species in communities_i_d.values():
                 for community_object in communities_no_species:
                     
-                    sleep(0.01)
+                    #sleep(0.01)
                     pbar.update(1)
                     
                     community_object.calculate_community_properties(np.arange(5),from_which_time = 7000)
@@ -217,6 +217,87 @@ communities_dynamics_df['survival_fraction_over_time'] = \
     communities_dynamics_df['average_diversity_over_time']/communities_dynamics_df['no_species']
 
 ############################
+
+#%%
+
+mu_as = np.unique(communities_dynamics_df['mu_a'])[[0,6,8]]
+data_to_plot = \
+    pd.concat([communities_dynamics_df.iloc[np.where((communities_dynamics_df['mu_a'] == mu_a) & \
+                                                     (communities_dynamics_df['sigma_a'] == 0.15))] 
+               for mu_a in mu_as])
+data_to_plot.replace({'mu_a' : {0.1 : 0.6, 0.7 : 0.9, 0.9 : 1.1}}, inplace = True)
+
+colourmap_base = mpl.colormaps['viridis_r'](0.99)
+light_dark_range = np.linspace(0.66,0,3)
+lighten_func = lambda val, i : val + i*(1-val)
+colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
+                for i in light_dark_range]
+cmap = mpl.colors.ListedColormap(colours_list)
+
+sns.set_style('white')
+
+fig, axs = plt.subplots(2,1, figsize=(4.5,4), layout='constrained', height_ratios=[1, 0.1])
+fig.suptitle('Prevalance of non-equilibrium\ncommunity dynamics',fontsize=24,weight='bold')
+fig.supylabel('Frequency Density',fontsize=18, multialignment='center')
+
+subfig0 = sns.histplot(data_to_plot,
+                       x = 'invasibility',
+                       hue = 'mu_a', bins = 30,
+                       element = 'step', stat="density", common_norm=False, cumulative = True,
+                       fill = False, palette = cmap, ax = axs.flatten()[0],
+                       linewidth = 3)
+
+subfig0_break = sns.histplot(data_to_plot,
+                       x = 'invasibility',
+                       hue = 'mu_a', bins = 30,
+                       element = 'step', stat="density", common_norm=False, cumulative = True,
+                       fill = False, palette = cmap, ax = axs.flatten()[1],
+                       linewidth = 2)
+axs.flatten()[1].axhline(0.0039,color='black',linewidth=0.8)
+
+axs.flatten()[0].get_xaxis().set_visible(False)
+
+subfig0.set_ylim([0.7,1.01])
+subfig0_break.set_ylim([0,0.1])
+subfig0.set_xlim([-0.01,1.01])
+subfig0_break.set_xlim([-0.01,1.01])
+
+subfig0_break.set_xticks(range(2))
+subfig0.set_yticks([0.7,1])
+subfig0_break.set_yticks(range(1))
+
+for ax in axs.flatten():
+    
+    ax.xaxis.set_tick_params(labelsize=16)
+    ax.yaxis.set_tick_params(labelsize=16)
+    
+for ax in axs.flatten():
+
+    ax.set_ylabel('')
+
+axs.flatten()[0].set_xlabel('')
+axs.flatten()[1].set_xlabel('Reinvadability\n(instability measure)', fontsize=18)
+
+for ax in axs.flatten():
+
+    ax.get_legend().remove()
+
+d = 0.01  # how big to make the diagonal lines in axes coordinates
+# arguments to pass to plot, just so we don't keep repeating them
+kwargs = dict(transform=axs.flatten()[0].transAxes, color="k", clip_on=False)
+
+axs.flatten()[0].plot((-d, +d), (-d, +d), **kwargs)
+kwargs.update(transform=axs.flatten()[1].transAxes)  
+axs.flatten()[1].plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+
+sns.despine(fig=None, ax=None, top=True, right=True, left=False, bottom=True, offset=None, trim=False)
+
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/gLV_instability_freq.png",
+            dpi=300,bbox_inches='tight')
+
+##############################
+
+#%%
 
 sns.set_style('white')
 
