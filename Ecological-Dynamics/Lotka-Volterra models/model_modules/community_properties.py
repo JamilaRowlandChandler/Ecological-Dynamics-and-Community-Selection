@@ -70,10 +70,10 @@ class CommunityPropertiesInterface:
             self.final_diversity[lineage_key] = final_popdyn[1]
         
         # calculates average diversity per time window between from_which_time and t_end
-        self.average_diversity_over_time = \
-            {'lineage ' + str(lineage) : self.average_diversity_at_time_t('lineage ' + str(lineage),
-                                                                          [from_which_time,self.t_end]) \
-                 for lineage in lineages}
+        #self.average_diversity_over_time = \
+        #    {'lineage ' + str(lineage) : self.average_diversity_at_time_t('lineage ' + str(lineage),
+        #                                                                  [from_which_time,self.t_end]) \
+        #         for lineage in lineages}
        
         # calculate community invasibility/re-invadability between from_which_time and t_end
         self.reinvadability = \

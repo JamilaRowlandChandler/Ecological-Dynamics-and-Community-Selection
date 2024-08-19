@@ -198,5 +198,6 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
             return dSdt
         
         return solve_ivp(gLV_ODE,[0,self.t_end],initial_abundance,
-                         args=(self.growth_rates,self.interaction_matrix,self.dispersal),
+                         args=(self.growth_rates,self.interaction_matrix,self.dispersal,
+                               self.dispersal * 1e-2),
                          method='RK45',t_eval=np.linspace(0,self.t_end,200))

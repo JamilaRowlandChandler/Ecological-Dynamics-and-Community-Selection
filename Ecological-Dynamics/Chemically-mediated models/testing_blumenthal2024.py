@@ -1014,10 +1014,10 @@ def thermodynamic_threshold_dynamics(mu, sigma):
         
         print('Community', i, '\n')
         
-        growth = np.abs(normal_distributed_parameters(1, sigma/np.sqrt(no_resources),
+        growth = np.abs(normal_distributed_parameters(1, sigma,
                                                     dims=(no_species, no_resources)))
         
-        consumption = np.abs(normal_distributed_parameters(mu/no_resources, sigma/np.sqrt(no_resources),
+        consumption = np.abs(normal_distributed_parameters(mu, sigma,
                                                     dims=(no_resources, no_species)))
         
         initial_abundances = np.random.uniform(10**-10, 2/no_species, no_species)
@@ -1109,8 +1109,6 @@ communities_03_015 = thermodynamic_threshold_dynamics(0.3, 0.15)
 pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_03015.pkl",
             communities_03_015)
 
-#%%
-
 print(0.9, 0.05)
 communities_09_005 = thermodynamic_threshold_dynamics(0.9, 0.05)
 pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_09005.pkl",
@@ -1132,8 +1130,6 @@ communities_03_005 = thermodynamic_threshold_dynamics(0.3, 0.05)
 pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_03005.pkl",
             communities_03_005)
 
-#%%
-
 print(0.9, 0.1)
 communities_09_01 = thermodynamic_threshold_dynamics(0.9, 0.1)
 pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0901.pkl",
@@ -1154,8 +1150,6 @@ print(0.3, 0.1)
 communities_03_01 = thermodynamic_threshold_dynamics(0.3, 0.1)
 pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_0301.pkl",
             communities_03_01)
-
-#%%
 
 print(0.9, 0.2)
 communities_09_02 = thermodynamic_threshold_dynamics(0.9, 0.2)
@@ -1217,6 +1211,112 @@ data_mu_sigma = pd.concat([create_df(simulation_data, mu_consumption, sigma_cons
                                     communities_03_02, communities_05_02, communities_07_02, communities_09_02, communities_11_02],
                                    np.tile(mu_cs, len(sigma_cs)),
                                    np.repeat(sigma_cs, len(mu_cs)))])
+
+#%%
+
+data_mu_sigma_cleaned = data_mu_sigma.iloc[np.where((data_mu_sigma['Diversity (species)'] > 0) &\
+                                                    (data_mu_sigma['Diversity (resources)'] > 0))]
+
+#%%
+
+avg_reinvadability = pd.pivot_table(data_mu_sigma_cleaned,
+                                      index = 'Consumption rate std',
+                                      columns = 'Average consumption rate',
+                                      values = 'Reinvadability (species)',
+                                      aggfunc = 'mean')
+
+sns.heatmap(avg_reinvadability)
+
+#%%
+
+avg_diversity = pd.pivot_table(data_mu_sigma_cleaned,
+                                      index = 'Consumption rate std',
+                                      columns = 'Average consumption rate',
+                                      values = 'Closeness to competitive exclusion',
+                                      aggfunc = 'mean')
+
+sns.heatmap(avg_diversity)
+
+#%%
+
+def prop_stable(x):
+    
+    return np.count_nonzero(x < 1e-3)/len(x)
+
+avg_reinvadability_2 = pd.pivot_table(data_mu_sigma_cleaned,
+                                      index = 'Consumption rate std',
+                                      columns = 'Average consumption rate',
+                                      values = 'Reinvadability (species)',
+                                      aggfunc = prop_stable)
+
+sns.heatmap(avg_reinvadability_2)
+
+#%%
+
+def new_plotting(data, x, y, xlabel, ylabel, subplot_vals, std = 0.15):
+    
+    sns.set_style('white')
+
+    fig, axs = plt.subplots(1,3,sharex=True,sharey=True,figsize=(11,5),layout='constrained')
+    fig.suptitle('Avg. consumption rate',fontsize=28,weight='bold')
+    fig.supxlabel(xlabel,fontsize=28,weight='bold')
+    fig.supylabel(ylabel,fontsize=28,weight='bold', multialignment='center')
+  
+    for ax, s_val in zip(axs.flatten(), subplot_vals):
+        
+        subfig = sns.scatterplot(data.iloc[np.where((data['Average consumption rate'] == s_val) &\
+                                                    (data['Consumption rate std'] == std))],
+                                 x = x, y = y, ax = ax, palette = 'viridis_r', s = 100)
+        subfig.set(xlabel=None,ylabel=None)
+        subfig.set_yticks(range(2))
+        ax.tick_params(axis='both', which='major', labelsize=16)
+        #ax.get_legend().remove()
+
+    sns.despine()
+       
+    return fig, axs
+
+#%%
+
+fig1, axs1 = new_plotting(data_mu_sigma, 'Reinvadability (species)',
+                          'Diversity (species)',
+                          'Re-invadability\n(instability measure)',
+                          'Surivival fraction\n(species)',
+                          [0.3, 0.7, 1.1])
+
+for i, ax in enumerate(axs1.flatten()):
+
+    ax.set_xticks(range(2))
+
+# %%
+
+fig2, axs2 = new_plotting(data_mu_sigma, 'Reinvadability (resources)',
+                          'Diversity (resources)',
+                          'Re-invadability\n(instability measure)',
+                          'Surivival fraction\n(resources)',
+                          [0.3, 0.7, 1.1])
+
+for i, ax in enumerate(axs2.flatten()):
+
+    ax.set_xticks(range(2))
+
+# %%
+
+fig3, axs3 = new_plotting(data_mu_sigma, 'Reinvadability (species)',
+                          'Closeness to competitive exclusion',
+                          'Re-invadability\n(instability measure)',
+                          r'$\frac{\text{species diversity}}{\text{resource diversity}}$',
+                          [0.3, 0.7, 1.1])
+                          
+axs3.flatten()[0].set_ylim([0,1.25])
+
+for i, ax in enumerate(axs3.flatten()):
+
+    ax.set_xticks(range(2))
+
+for ax in axs3.flat:
+    
+    ax.axhline(1,color='grey',ls='--',linewidth=2)
 
 #%%
 

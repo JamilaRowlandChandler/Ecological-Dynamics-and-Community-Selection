@@ -185,8 +185,8 @@ def cross_feeding(model,
         
         dSR_dt = model(growth,consumption,production,influx,outflux,**kwargs)
         
-        return solve_ivp(dSR_dt, [0, 40], initial_conditions, max_step = 0.25,
-                         method = 'RK45', rtol = 2.5e-14, atol = 2.5e-14)
+        return solve_ivp(dSR_dt, [0, 40], initial_conditions, max_step = 1,
+                         method = 'RK45', rtol = 2.5e-14, atol = 2.5e-14, t_eval=np.linspace(0,40,40))
  
     monoculture_1 = [initialise_and_simulate(model = model, influx = influx, outflux = outflux,
                                              initial_conditions = [0.1,0,10,0],
