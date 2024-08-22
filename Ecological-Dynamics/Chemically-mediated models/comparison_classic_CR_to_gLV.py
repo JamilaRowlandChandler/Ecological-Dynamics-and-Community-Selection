@@ -306,6 +306,102 @@ def thermodynamic_threshold_dynamics(mu, sigma, no_species = 100, no_resources =
 
 # %%
 
+def CR_dynamics_growth_scaled_with_consumption(mu, sigma, no_species = 100,
+                                               no_resources = 100):
+    
+    influx = np.ones(no_resources)
+    death = np.ones(no_species)
+    
+    no_communities = 25
+    no_lineages = 5
+    
+    def community_mu_sigma(i, mu, sigma):
+        
+        print({'mu': mu, 'sigma' : sigma, 'Community' : i}, '\n')
+        
+        growth = np.abs(normal_distributed_parameters(mu, sigma,
+                                                    dims=(no_species, no_resources)))
+        
+        consumption = np.abs(normal_distributed_parameters(mu, sigma,
+                                                    dims=(no_resources, no_species)))
+   
+        def simulate_community(no_species, no_resources,
+                               death, influx, growth, consumption):
+            
+            initial_abundances = np.random.uniform(1e-8, 2/no_species, no_species)
+            initial_concentrations = np.random.uniform(1e-8, 2/no_species, no_resources)
+    
+            first_simulation = solve_ivp(dCR_dt, [0, 500],
+                                         np.concatenate(
+                                             (initial_abundances, initial_concentrations)),
+                                         args=(no_species, growth, death,
+                                               consumption, influx),
+                                         method='RK45', rtol=2.5e-14, atol=2.5e-14,
+                                         t_eval=np.linspace(0,500,50))
+    
+            new_initial_conditions = first_simulation.y[:, -1]
+    
+            if np.any(np.log(np.abs(new_initial_conditions)) > 6) \
+                or np.isnan(np.log(np.abs(new_initial_conditions))).any():
+    
+                return None
+    
+            else:
+    
+                final_simulation = solve_ivp(dCR_dt, [0, 3000],
+                                             new_initial_conditions,
+                                             args=(no_species, growth,
+                                                   death, consumption, influx),
+                                             method='RK45', rtol=2.5e-14, atol=2.5e-14,
+                                             t_eval=np.linspace(0,3000,200))
+    
+                if np.any(np.log(np.abs(final_simulation.y[:, -1])) > 6) \
+                    or np.isnan(np.log(np.abs(final_simulation.y[:, -1]))).any():
+    
+                    return None
+    
+                else:
+    
+                    species_reinvadability = rescaled_detect_invasability(final_simulation.t, final_simulation.y[:no_species, :],
+                                                                          2000)
+                    resource_reinvadability = rescaled_detect_invasability(final_simulation.t, final_simulation.y[:no_species, :],
+                                                                           2000)
+                    
+                    species_fluctuations = fluctuation_coefficient(final_simulation.t, final_simulation.y[:no_species, :])
+                    resource_fluctuations = fluctuation_coefficient(final_simulation.t, final_simulation.y[no_species:, :])
+                    
+                    last_500_t = np.argmax(final_simulation.t > 2500)
+                    species_diversity = \
+                        np.count_nonzero(np.any(final_simulation.y[:no_species, last_500_t:] > 1e-3,
+                                                axis=1))/no_species
+                    resource_diversity =  \
+                        np.count_nonzero(np.any(final_simulation.y[no_species:, last_500_t:] > 1e-3,
+                                                axis=1))/no_resources
+    
+                    return [final_simulation, species_reinvadability, resource_reinvadability,
+                            species_fluctuations, resource_fluctuations, species_diversity,
+                            resource_diversity]
+    
+        messy_list = [simulate_community(no_species, no_resources, death,
+                                         influx, growth, consumption)
+                      for _ in range(no_lineages)]
+        cleaned_messy_list = list(
+            filter(lambda item: item is not None, messy_list))
+        
+        return cleaned_messy_list
+    
+    community_list = [community_mu_sigma(i, mu, sigma) for i in range(no_communities)]
+
+    return {'Simulations': [item[0] for community in community_list for item in community],
+            'Species Reinvadability': [item[1] for community in community_list for item in community],
+            'Resource Reinvadability': [item[2] for community in community_list for item in community],
+            'Species Fluctuation CV': [item[3] for community in community_list for item in community],
+            'Resource Fluctuation CV': [item[4] for community in community_list for item in community],
+            'Species diversity': [item[5] for community in community_list for item in community],
+            'Resource diversity': [item[6] for community in community_list for item in community]}
+
+# %%
+
 def gLV_simulations_thermodynamic_limit(mu, sigma, no_species = 100):
     
     print({'mu': mu, 'sigma' : sigma}, '\n')
@@ -443,6 +539,35 @@ def gLV_carrying_capacity_scaled_with_alpha(mu, sigma, no_species = 100):
 
     return simulations_and_properties
 
+
+#%%
+
+def create_and_delete_CR(filename, kwargs):
+    
+    CR_communities = CR_dynamics_growth_scaled_with_consumption(**kwargs)
+    pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" + filename + ".pkl",
+                CR_communities)
+    del CR_communities
+    
+#%%
+
+def total_consumption(filename, y_index):
+    
+    simulations = \
+            pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_d_s_small_" + filename + ".pkl")
+   
+    def consumption_from_gradient(t, y, i):
+        
+        X = y[i,:].T
+        
+        gradient = np.gradient(X, t)
+        consumption = - (gradient - (X * (1 - X)))
+        
+        return consumption
+    
+    return np.vstack([consumption_from_gradient(simulation.t, simulation.y, i) 
+                      for simulation in simulations for i in y_index])
+    
 # %%
 
 ############################ generalised Lotka-Volterra dynamics ##############################
@@ -551,6 +676,25 @@ del CR_communities_11_02
 
 #%%
 
+# growth scaled with consumption
+
+mu_c = [0.3,0.5,0.7,0.9,1.1]
+sigma_c = [0.05,0.1,0.15,0.2]
+
+no_species = 50
+
+for sigma in sigma_c :
+    
+    for mu in mu_c:
+        
+        filename_CR = "cr_growth_scaled_consumption_" + str(mu) + "_" + str(sigma)
+
+        create_and_delete_CR(filename_CR, {'mu' : mu, 'sigma' : sigma,
+                                           'no_species' : no_species,
+                                           'no_resources' : no_species})
+
+#%%
+
 ##################################### Generate Dataframes #############################
 
 mu_string = ['03','05','07','09','11']
@@ -574,6 +718,30 @@ for sigma, sigma_s in zip(sigma_cs, sigma_string):
         
 data_mu_sigma_s = pd.concat(df_cr_list)
 data_mu_sigma_s['Model'] = np.repeat('CR', data_mu_sigma_s.shape[0])
+
+#%%
+
+##################################### Generate Dataframes #############################
+
+mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1]
+sigma_cs = [0.05, 0.1, 0.15, 0.2]
+
+df_cr_gc_list = []
+
+for sigma in sigma_cs:
+    
+    for mu in mu_cs:
+        
+        simulation_data = \
+            pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/cr_growth_scaled_consumption_" + str(mu) + "_" + str(sigma) + ".pkl")
+            
+        df = CR_dynamics_df(simulation_data, mu, sigma)
+        df_cr_gc_list.append(df)
+        
+        del simulation_data
+        
+data_mu_sigma_gc = pd.concat(df_cr_gc_list)
+data_mu_sigma_gc['Model'] = np.repeat('CR', data_mu_sigma_gc.shape[0])
 
 # %%
 
@@ -666,6 +834,83 @@ for ax in axs:
 plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_gLV_CR.png",
             dpi=300,bbox_inches='tight')
 
+#%%
+
+######################### Phase digrams ####################################
+
+prop_reinvadability_gc = pd.pivot_table(data_mu_sigma_gc,
+                                      index = 'Consumption rate std',
+                                      columns = 'Average consumption rate',
+                                      values = 'Reinvadability (species)',
+                                      aggfunc = prop_stable)
+prop_reinvadability_gc = 1 - prop_reinvadability_gc
+
+prop_reinvadability_gLV = pd.pivot_table(gLV_data_plotting,
+                                      index = 'Interaction strength std',
+                                      columns = 'Average interaction strength',
+                                      values = 'Reinvadability (species)',
+                                      aggfunc = prop_stable)
+prop_reinvadability_gLV = 1 - prop_reinvadability_gLV
+
+#%%
+
+fig, axs = plt.subplots(1, 2, layout = 'constrained', figsize = (8,3.5))
+
+sns.set_style('white')
+
+colourmap_base = mpl.colormaps['viridis_r'](0.85)
+light_dark_range = np.linspace(1,0,256)
+lighten_func = lambda val, i : val + i*(1-val)
+colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
+                for i in light_dark_range]
+cmap = mpl.colors.ListedColormap(colours_list)
+norm = mpl.colors.PowerNorm(0.45, vmin = 0, vmax = 1)
+sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+
+fig.suptitle('The phase transition out of stability qualitatively\ndiffers between the gLV and C-R model',fontsize=20,
+             weight='bold', y = 1.15)
+
+subfig0 = sns.heatmap(prop_reinvadability_gc,  ax=axs[0], vmin=0, vmax=1, cbar=False, cmap = cmap, norm = sm.norm,
+                      square = True)
+subfig1 = sns.heatmap(prop_reinvadability_gLV, ax=axs[1], vmin=0, vmax=1, cbar=True, cmap = cmap, norm = sm.norm,
+                      square = True, cbar_kws={"ticks":[0,0.5,1]})
+subfig0.invert_yaxis()
+subfig1.invert_yaxis()
+
+axs[1].set_title('gLV', fontsize = 16, weight = 'bold')
+axs[0].set_title('Consumer-Resource model', fontsize = 16, weight = 'bold')
+
+cbar = subfig1.collections[0].colorbar
+cbar.set_label(label='P(chaos)',weight='bold', size='16')
+cbar.ax.tick_params(labelsize=12)
+
+subfig0.axhline(0, 0, 1.1, color = 'black', linewidth = 2)
+subfig0.axhline(4, 0, 1.1, color = 'black', linewidth = 2)
+subfig0.axvline(0, 0, 4, color = 'black', linewidth = 2)
+subfig0.axvline(5, 0, 4, color = 'black', linewidth = 2)
+
+subfig1.axhline(0, 0, 1.1, color = 'black', linewidth = 2)
+subfig1.axhline(4, 0, 1.1, color = 'black', linewidth = 2)
+subfig1.axvline(0, 0, 4, color = 'black', linewidth = 2)
+subfig1.axvline(5, 0, 4, color = 'black', linewidth = 2)
+
+subfig0.set_xlabel('Avg. consumption rate',fontsize=16, weight = 'bold')
+subfig0.set_ylabel(r'$\sigma$',fontsize=16, weight = 'bold')
+subfig1.set_xlabel('Avg. interaction strength',fontsize=16, weight = 'bold')
+subfig1.set_ylabel('')
+
+for ax in axs:
+
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    
+#%%
+
+simulation_11_005 = \
+    pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/cr_growth_scaled_consumption_" + str(1.1) + "_" + str(0.05) + ".pkl")
+
+plt.plot(simulation_11_005['Simulations'][0].t,simulation_11_005['Simulations'][0].y[50:,:].T)
+    
 #%%
 
 ###################################### Diversity - stability relationships ###################
