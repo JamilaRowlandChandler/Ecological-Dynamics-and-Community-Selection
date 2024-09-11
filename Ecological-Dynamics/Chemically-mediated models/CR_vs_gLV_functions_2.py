@@ -422,29 +422,6 @@ def gLV_dynamics_df(simulation_data, mu, sigma):
 
 #%%
 
-def prop_stable(x, instability_threshold = 1e-3):
-    
-    return np.count_nonzero(x < instability_threshold)/len(x)
-
-# %%
-
-def kendal_tau(x):
-    
-    corr_test = kendalltau(x.iloc[:,0], x.iloc[:,1], variant = 'b')
-    
-    return [corr_test.statistic, corr_test.pvalue]
-
-#%%
-
-def annotate_p_values(x):
-
-    p_value_conditions = [x <= 0.001, x <= 0.01, x <= 0.05, x > 0.05]
-    p_value_annotations = ['***', '**', '*', 'ns']
-    
-    return np.select(p_value_conditions, p_value_annotations, '')
-
-#%%
-
 def create_and_delete_CR(filename, kwargs, function_option = '1'):
     
     match function_option:
@@ -473,82 +450,10 @@ def create_df_and_delete_simulations(filename, mu_c, sigma_c):
     
     return df
     
-#%%
-
-def total_consumption(simulations, y_index):
-    
-    def consumption_from_gradient(t, y, i):
-        
-        last_500_t = np.argmax(t > 2500)
-        
-        X = y[i,last_500_t:].T
-        
-        if np.any(X > 1e-3):
-        
-            gradient = np.gradient(X, t[last_500_t:])
-            consumption = - ((gradient - (X * (1 - X))) / X)
-            
-            return consumption
-        
-        else:
-            
-            return np.repeat(np.nan, len(t[last_500_t:]))
-    
-    return [np.vstack([consumption_from_gradient(simulation.t, simulation.y, i)
-                      for i in y_index]) for simulation in simulations['Simulations']]
-
-# %%
-
-def phase_diagram(data_list): 
-    
-    fig, axs = plt.subplots(1, len(data_list), layout = 'constrained', figsize = (8,2.6))
-
-    sns.set_style('white')
-
-    colourmap_base = mpl.colormaps['viridis_r'](0.85)
-    light_dark_range = np.linspace(1,0,256)
-    lighten_func = lambda val, i : val + i*(1-val)
-    colours_list = [tuple([lighten_func(val,i) for val in colourmap_base[:-1]]) + (colourmap_base[-1],)
-                    for i in light_dark_range]
-    cmap = mpl.colors.ListedColormap(colours_list)
-    norm = mpl.colors.PowerNorm(0.5, vmin = 0, vmax = 1)
-    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
-    
-    for i, (data, ax) in enumerate(zip(data_list, axs.flatten())):
-        
-        if i == len(data_list) - 1:
-            
-            subfig = sns.heatmap(data, ax=ax, vmin=0, vmax=1, cbar=True, cmap = cmap,
-                                 norm = sm.norm, cbar_kws={"ticks":[0,0.5,1]})
-            
-            cbar = subfig.collections[0].colorbar
-            cbar.set_label(label='1-P(stability)',weight='bold', size='14')
-            cbar.ax.tick_params(labelsize=12)
-            
-        else:
-            
-            subfig = sns.heatmap(data,  ax=ax, vmin=0, vmax=1, cbar=False, cmap = cmap,
-                                 norm = sm.norm)
-        
-        subfig.invert_yaxis()
-        subfig.axhline(0, 0, 1.1, color = 'black', linewidth = 2)
-        subfig.axhline(4, 0, 1.1, color = 'black', linewidth = 2)
-        subfig.axvline(0, 0, 4, color = 'black', linewidth = 2)
-        subfig.axvline(5, 0, 4, color = 'black', linewidth = 2)
-
-    for ax in axs:
-
-        ax.set_yticklabels([])
-        ax.set_xticklabels([])
-            
-    return fig, axs
-
 # %%
 
 def phase_diagram_avg(data_list,
-                      colourmap_bases = [mpl.colormaps['viridis_r'](0.85),
-                                         mpl.colormaps['viridis_r'](0.85),
-                                         mpl.colormaps['viridis_r'](0.85)]): 
+                      colourmap_base = mpl.colormaps['viridis_r'](0.85)): 
     
     fig, axs = plt.subplots(1, len(data_list), layout = 'constrained', figsize = (8,2.6))
 
@@ -574,14 +479,14 @@ def phase_diagram_avg(data_list,
         
         return {'cmap' : cmap, 'sm' : sm}
 
-    colourmaps = [cmap_norm(base) for base in colourmap_bases]
+    colourmap = cmap_norm(colourmap_base)
     
-    for i, (data, ax, cmap_norm) in enumerate(zip(data_list, axs.flatten(), colourmaps)):
+    for i, (data, ax) in enumerate(zip(data_list, axs.flatten())):
         
         if i == len(data_list) - 1:
             
-            subfig = sns.heatmap(data, ax=ax, vmin=0, vmax=1, cbar=True, cmap = cmap_norm['cmap'],
-                                 norm = cmap_norm['sm'].norm, cbar_kws={"ticks":[0,0.5,1]})
+            subfig = sns.heatmap(data, ax=ax, vmin=0, vmax=1, cbar=True, cmap = colourmap['cmap'],
+                                 norm = colourmap['sm'].norm, cbar_kws={"ticks":[0,0.5,1]})
             
             cbar = subfig.collections[0].colorbar
             cbar.set_label(label='Avg. volatility',weight='bold', size='14')
@@ -589,14 +494,14 @@ def phase_diagram_avg(data_list,
             
         else:
             
-            subfig = sns.heatmap(data,  ax=ax, vmin=0, vmax=1, cbar=False, cmap = cmap_norm['cmap'],
-                                 norm = cmap_norm['sm'].norm)
+            subfig = sns.heatmap(data,  ax=ax, vmin=0, vmax=1, cbar=False, cmap = colourmap['cmap'],
+                                 norm = colourmap['sm'].norm)
         
         subfig.invert_yaxis()
-        subfig.axhline(0, 0, 1.1, color = 'black', linewidth = 2)
-        subfig.axhline(4, 0, 1.1, color = 'black', linewidth = 2)
-        subfig.axvline(0, 0, 4, color = 'black', linewidth = 2)
-        subfig.axvline(5, 0, 4, color = 'black', linewidth = 2)
+        #subfig.axhline(0, 0, 1.1, color = 'black', linewidth = 2)
+        #subfig.axhline(4, 0, 1.1, color = 'black', linewidth = 2)
+        #subfig.axvline(0, 0, 4, color = 'black', linewidth = 2)
+        #subfig.axvline(5, 0, 4, color = 'black', linewidth = 2)
 
     for i, ax in enumerate(axs):
         
@@ -610,57 +515,6 @@ def phase_diagram_avg(data_list,
             
             ax.set_yticklabels([])
             
-    return fig, axs
-
-
-# %%
-        
-def diversity_stability_plot(data_list,
-                             x, y, hue, ylabel, legend_labels,
-                             mus, sigmas,
-                             palette = ['#349b55ff','#ab00d5ff']):
-    
-    sns.set_style('white')
-    
-    fig, axs = plt.subplots(1,1,sharex=True,sharey=True,figsize=(5.5,4.5),layout='constrained')
-    
-    def generate_subdata(data, mu, sigma):
-        
-        if np.any(data.columns == 'Average interaction strength'):
-            
-            subdata = data.iloc[np.where((data['Average interaction strength'] == mu) & \
-                                         (data['Interaction strength std'] == sigma))]
-            
-        elif np.any(data.columns == 'Average consumption rate'):
-            
-            subdata = data.iloc[np.where((data['Average consumption rate'] == mu) & \
-                                         (data['Consumption rate std'] == sigma))]
-        return subdata
-                          
-    plotting_data = pd.concat([generate_subdata(data, mu, sigma) 
-                               for data, mu, sigma in zip(data_list, mus, sigmas)])
-
-    plotting_data[x] = 1 - plotting_data[x]
-
-    subfig = sns.scatterplot(data = plotting_data, x = x, y = y, hue = hue,
-                             ax=axs, palette = palette,
-                             s=75, edgecolor = 'black')
-    subfig.set(xlabel=None,ylabel=None)
-    subfig.set_yticks(range(2))
-    subfig.set_xticks(range(2))
-    axs.tick_params(axis='both', which='major', labelsize=16)
-    handles, labels = axs.get_legend_handles_labels()
-    axs.get_legend().remove()
-
-    axs.set_xlabel('Stability metric',fontsize=28,weight='bold')
-    axs.set_ylabel(ylabel,fontsize=28,weight='bold', multialignment='center')
-        
-    fig.legend(handles, legend_labels,
-               loc='center right', bbox_to_anchor=(1.8, 0.75),
-               fontsize = 18)
-
-    sns.despine()
-    
     return fig, axs
 
 #%%
@@ -750,52 +604,6 @@ def diversity_stability_fit_plot(data_list,
 
 #%%
 
-def competitive_exclusion_plot(dfs, x, y, mu_c, sigma_c):
-    
-    sns.set_style('white')
-    
-    palette = ['#2a7c44ff','#88d7a2ff']
-
-    fig, axs = plt.subplots(1,1,sharex=True,sharey=True,figsize=(5.5,5),layout='constrained')
-    
-    def generate_subdata(data, mu, sigma):
-            
-        subdata = data.iloc[np.where((data['Average consumption rate'] == mu) & \
-                                     (data['Consumption rate std'] == sigma))]
-        
-        return subdata
-                          
-    plotting_data = pd.concat([generate_subdata(data, mu, sigma) 
-                               for data, mu, sigma in zip(dfs, mu_c, sigma_c)])
-       
-    plotting_data[x] = 1 - plotting_data[x]
-    
-    axs.axhline(1, 0, 1, color = 'grey', linewidth = 2, linestyle = '--')
-    
-    subfig = sns.scatterplot(data = plotting_data, x = x, y = y, hue='Conditions',
-                             ax=axs, palette=palette[:len(dfs)],
-                             s=100, edgecolor = '#0b2213ff')
-    subfig.set(xlabel=None,ylabel=None)
-    subfig.set_yticks(range(2))
-    subfig.set_xticks(range(2))
-    axs.tick_params(axis='both', which='major', labelsize=16)
-    handles, labels = axs.get_legend_handles_labels()
-    axs.get_legend().remove()
-
-    axs.set_xlabel('Stability metric',fontsize=28,weight='bold')
-    axs.set_ylabel(r'$\frac{\text{Species surivival fraction}}{\text{Resource surivival fraction}}$',
-                   fontsize=28,weight='bold', multialignment='center')
-        
-    fig.legend(handles, np.unique(plotting_data['Conditions']),
-               loc='center right', bbox_to_anchor=(1.6, 0.75),
-               fontsize = 18)
-
-    sns.despine()
-    
-    return fig, axs
-
-#%%
-
 def competitive_exclusion_fit_plot(dfs, x, y, mu_c, sigma_c,
                                    fit_lines):
     
@@ -847,7 +655,6 @@ def competitive_exclusion_fit_plot(dfs, x, y, mu_c, sigma_c,
     sns.despine()
     
     return fig, axs
-
 
 #%%
 
