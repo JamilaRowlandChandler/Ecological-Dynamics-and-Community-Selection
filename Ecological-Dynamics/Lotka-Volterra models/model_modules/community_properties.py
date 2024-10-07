@@ -370,3 +370,64 @@ class CommunityPropertiesInterface:
         
         return community_function
         
+##################################
+
+def max_le_gLV(model_class, T, initial_conditions, extinction_threshold,
+               separation = 1e-9, dt = 1):
+    
+    log_d1d0 = []
+    
+    # Set initial conditions as population abundances at the end of lineage simulations
+    
+    # Set initial conditions of the original and perturbated trajectory
+    original_conditions = deepcopy(initial_conditions)
+    
+    perturbed_conditions = deepcopy(initial_conditions)
+    perturbed_conditions += separation/len(perturbed_conditions)
+    
+    current_time = 0
+    
+    separation_dt = separation
+    separation_min = 1e-3 * separation
+    separation_max = 1e3 * separation
+    
+    for n in range(int(np.round(T/dt))):
+        
+        if separation_dt > separation_min and separation_dt < separation_max:
+            
+            # Simulate the original community trajectory for time = dt
+            simulation1 = model_class.simulate_community(np.arange(1), dt, init_cond_func=None,
+                                                         assign = 'False',
+                                                         usersupplied_init_conds = original_conditions.reshape((len(original_conditions),1)))
+            # Simulate the perturbated community trajectory for time = dt
+            simulation2 = model_class.simulate_community(np.arange(1), dt, init_cond_func=None,
+                                                         assign = 'False',
+                                                         usersupplied_init_conds = perturbed_conditions.reshape((len(perturbed_conditions),1)))
+            # Get species abundances at the end of simulation from the original and perturbed trajectories
+            final_dynamics1 = simulation1['lineage 0'].y[:,-1]
+            final_dynamics2 = simulation2['lineage 0'].y[:,-1]
+            
+            # Calculated the new separation between the original and perturbated trajectory (d1)
+            separation_dt = np.sqrt(np.sum((final_dynamics1 - final_dynamics2)**2))
+            
+            # Calculate the max. lyapunov exponent
+            log_d1d0.append(np.log(separation_dt/(separation)))
+            
+            # Reset the original trajectory's species abundances to the species abundances at dt.
+            original_conditions = final_dynamics1
+             
+            # Reset the perturbated trajectory's species abundances so that the original
+            #    and perturbated community are 'separation' apart.
+            perturbed_conditions = final_dynamics1 + \
+                (final_dynamics2 - final_dynamics1)*(separation/separation_dt)
+                
+            current_time += dt
+            
+        else:
+            
+            break
+        
+    # Calculate average max. lyapunov exponent
+    max_lyapunov_exponent = (1/(current_time)) * np.sum(np.array(log_d1d0))
+    
+    return max_lyapunov_exponent

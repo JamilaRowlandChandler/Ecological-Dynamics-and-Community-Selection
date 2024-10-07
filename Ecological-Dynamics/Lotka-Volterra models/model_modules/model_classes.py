@@ -161,7 +161,7 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
                 self.species_contribution_community_function = usersupplied_community_function
        
     def simulate_community(self,lineages,t_end,init_cond_func='Mallmin',
-                           usersupplied_init_conds=None):
+                           usersupplied_init_conds=None,assign=True):
         
         '''
         
@@ -190,10 +190,17 @@ class gLV(ParametersInterface, InitialConditionsInterface, CommunityPropertiesIn
         
         initial_abundances = \
             self.generate_initial_conditions(lineages,init_cond_func,usersupplied_init_conds)
+            
+        ODE_sols = {'lineage ' + str(lineage) : self.gLV_simulation(initial_abundances[:,i]) \
+                         for i, lineage in enumerate(lineages)}  
+            
+        if assign is True:
+            
+            self.ODE_sols = ODE_sols
         
-        # Simulations
-        self.ODE_sols = {'lineage ' + str(lineage) : self.gLV_simulation(initial_abundances[:,i]) \
-                         for i, lineage in enumerate(lineages)}    
+        else:
+            
+            return ODE_sols
         
     def gLV_simulation(self,initial_abundance):
         
