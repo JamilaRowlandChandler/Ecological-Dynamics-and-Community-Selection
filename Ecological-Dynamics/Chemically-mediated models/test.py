@@ -234,10 +234,9 @@ for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
         
 mu_string = ['03','05','07','09','11','13']
 mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
-#sigma_string = ['002','004','006','008','01','015','02']
-#sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
-sigma_string = ['015','02']
-sigma_cs = [0.15, 0.2]
+sigma_string = ['002','004','006','008','01','015','02']
+sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
+
 
 no_species = 250
 
@@ -279,19 +278,18 @@ for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
 
 # more species
 
-mu_string = ['01','03','05','07','09','11','13']
-mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
-#sigma_string = ['002','004','006','008','01','015','02']
-#sigma_cs = [0.02,0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
-sigma_string = ['002','004']
-sigma_cs = [0.02, 0.04]
+#mu_string = ['01','03','05','07','09','11','13']
+#mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
+mu_string = ['13']
+mu_cs = [1.3]
+sigma_string = ['002','004','006','008','01','015','02']
+sigma_cs = [0.02,0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
 
 no_species = 250
 
 for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
     
     for mu_c, mu_s in zip(mu_cs, mu_string):
-        
         
         filename_CR = "CR_growth_consumption_uncoupled_scaled_more_species_" + str(mu_s) + "_" + str(sigma_s)
 
@@ -321,6 +319,32 @@ for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
                              'consumption_funtion_of_growth', mu_c, sigma_c,
                              mu_g = 1, sigma_g = sigma_c,
                              no_species = no_species, no_resources = no_species)
+        
+# %%
+
+# more species
+
+#mu_string = ['03','05','07','09','11','13']
+#mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
+mu_string = ['05','07','09','11','13']
+mu_cs = [0.5, 0.7, 0.9, 1.1, 1.3]
+#sigma_string = ['002','004','006','008','01','015','02']
+#sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
+sigma_string = ['02']
+sigma_cs = [0.2]
+
+no_species = 250
+
+for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
+    
+    for mu_c, mu_s in zip(mu_cs, mu_string):
+        
+        filename_CR = "CR_consumption_coupled_to_growth_more_species_" + str(mu_s) + "_" + str(sigma_s)
+
+        create_and_delete_CR(filename_CR, 
+                             'consumption_funtion_of_growth', mu_c, sigma_c,
+                             mu_g = 1, sigma_g = sigma_c,
+                             no_species = no_species, no_resources = no_species)
 
 # %%
 
@@ -328,8 +352,8 @@ for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
 
 mu_string = ['11','13','15','17','19','21']
 mu_cs = [1.1, 1.3, 1.5, 1.7, 1.9, 2.1]
-sigma_string = ['01','015','02','025','03']
-sigma_cs = [0.1, 0.15, 0.2, 0.25, 0.3]
+sigma_string = ['012','014','016','018']
+sigma_cs = [0.12, 0.14, 0.16, 0.18]
 
 no_species = 50
 
@@ -338,6 +362,31 @@ for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
     for mu_c, mu_s in zip(mu_cs, mu_string):
         
         filename_CR = "CR_growth_coupled_to_consumption_" + str(mu_s) + "_" + str(sigma_s)
+
+        create_and_delete_CR(filename_CR, 
+                             'growth_function_of_consumption', mu_c, sigma_c,
+                             mu_g = 1, sigma_g = sigma_c,
+                             no_species = no_species, no_resources = no_species)
+        
+# %%
+
+# more species
+
+mu_string = ['11','13','15','17','19','21']
+mu_cs = [1.1, 1.3, 1.5, 1.7, 1.9, 2.1]
+#sigma_string = ['012','014','016','018']
+#sigma_cs = [0.12, 0.14, 0.16, 0.18]
+sigma_string = ['018']
+sigma_cs = [0.18]
+
+no_species = 250
+
+
+for sigma_c, sigma_s in zip(sigma_cs, sigma_string):
+    
+    for mu_c, mu_s in zip(mu_cs, mu_string):
+        
+        filename_CR = "CR_growth_coupled_to_consumption_more_species_" + str(mu_s) + "_" + str(sigma_s)
 
         create_and_delete_CR(filename_CR, 
                              'growth_function_of_consumption', mu_c, sigma_c,
@@ -355,9 +404,11 @@ mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
 sigma_string = ['002','004','006','008','01','015','02']
 sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
 
-no_species = 50
+#no_species = 50
+no_species = 250
 
-uncoupled_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+#uncoupled_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+uncoupled_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_more_species_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
                               for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
                               for mu_c, mu_s in zip(mu_cs, mu_string)])
 
@@ -366,37 +417,21 @@ uncoupled_cr_df['Annotation'] = np.repeat('uncoupled', uncoupled_cr_df.shape[0])
 
 # %%
 
-# more species
+# Uncoupled but scaled growth and consumption
 
 mu_string = ['03','05','07','09','11','13']
 mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
 #sigma_string = ['002','004','006','008','01','015','02']
 #sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
-sigma_string = ['002','004','006']
-sigma_cs = [0.02, 0.04, 0.06]
+sigma_string = ['004','006','008','01','015','02']
+sigma_cs = [0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
 
+#no_species = 50
 no_species = 250
 
-uncoupled_cr_df_2 = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_more_species_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
-                              for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
-                              for mu_c, mu_s in zip(mu_cs, mu_string)])
-
-uncoupled_cr_df_2['Model'] = np.repeat('CR', uncoupled_cr_df_2.shape[0])
-uncoupled_cr_df_2['Annotation'] = np.repeat('uncoupled', uncoupled_cr_df_2.shape[0])
-
-# %%
-
-# Uncoupled but scaled growth and consumption
-
-mu_string = ['03','05','07','09','11','13']
-mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
-sigma_string = ['002','004','006','008','01','015','02']
-sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
-
-no_species = 50
-
-uncoupled_scaled_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_scaled_copy_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
-                              for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
+#uncoupled_scaled_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_scaled_copy_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+uncoupled_scaled_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_consumption_uncoupled_scaled_more_species_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+                               for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
                               for mu_c, mu_s in zip(mu_cs, mu_string)])
 
 uncoupled_scaled_cr_df['Model'] = np.repeat('CR', uncoupled_scaled_cr_df.shape[0])
@@ -412,9 +447,11 @@ mu_cs = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
 sigma_string = ['002','004','006','008','01','015','02']
 sigma_cs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
 
-no_species = 50
+#no_species = 50
+no_species = 250
 
-coupled_c_cr_df = pd.concat([create_df_and_delete_simulations("CR_consumption_coupled_to_growth_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+#coupled_c_cr_df = pd.concat([create_df_and_delete_simulations("CR_consumption_coupled_to_growth_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+coupled_c_cr_df = pd.concat([create_df_and_delete_simulations("CR_consumption_coupled_to_growth_more_species_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
                               for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
                               for mu_c, mu_s in zip(mu_cs, mu_string)])
 
@@ -427,13 +464,17 @@ coupled_c_cr_df['Annotation'] = np.repeat('coupled c', coupled_c_cr_df.shape[0])
 
 mu_string = ['11','13','15','17','19','21']
 mu_cs = [1.1, 1.3, 1.5, 1.7, 1.9, 2.1]
-sigma_string = ['01','015','02','025','03']
-sigma_cs = [0.1, 0.15, 0.2, 0.25, 0.3]
+#sigma_string = ['01','012','014','016','018','02']
+#sigma_cs = [0.1, 0.12, 0.14, 0.16, 0.18, 0.2]
+sigma_string = ['01','012','014','016','018']
+sigma_cs = [0.1, 0.12, 0.14, 0.16, 0.18]
 
-no_species = 50
+#no_species = 50
+no_species = 250
 
-coupled_g_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_coupled_to_consumption_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
-                              for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
+#coupled_g_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_coupled_to_consumption_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+coupled_g_cr_df = pd.concat([create_df_and_delete_simulations("CR_growth_coupled_to_consumption_more_species_" + str(mu_s) + "_" + str(sigma_s), no_species, mu_c, sigma_c)
+                               for sigma_c, sigma_s in zip(sigma_cs, sigma_string) 
                               for mu_c, mu_s in zip(mu_cs, mu_string)])
 
 coupled_g_cr_df['Model'] = np.repeat('CR', coupled_g_cr_df.shape[0])
@@ -443,16 +484,20 @@ coupled_g_cr_df['Annotation'] = np.repeat('coupled g', coupled_g_cr_df.shape[0])
 
 ##################### gLV
 
-gLV_communities_fixed_growth = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/gLV_d_s_3.pkl")
+#gLV_communities_fixed_growth = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/gLV_d_s_3.pkl")
+gLV_communities_fixed_growth = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/gLV_more_species.pkl")
 
 mu_as = [0.3, 0.5, 0.7, 0.9, 1.1, 1.3]
 sigma_as = [0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2]
-no_species = 50
+#no_species = 50
+no_species = 250
 
 data_gLV_mu_sigma_unscaled = pd.concat([gLV_dynamics_df(simulation_data, no_species, mu, sigma)
                                         for simulation_data, mu, sigma in 
                                         zip(gLV_communities_fixed_growth, np.tile(mu_as, len(sigma_as)),
                                             np.repeat(sigma_as, len(mu_as)))])
+
+del gLV_communities_fixed_growth
     
 data_gLV_mu_sigma_unscaled['Model'] = np.repeat('gLV', data_gLV_mu_sigma_unscaled.shape[0])
 data_gLV_mu_sigma_unscaled['Annotation'] = np.repeat('gLV', data_gLV_mu_sigma_unscaled.shape[0])
@@ -461,7 +506,9 @@ data_gLV_mu_sigma_unscaled['Annotation'] = np.repeat('gLV', data_gLV_mu_sigma_un
 
 ################################ Phase diagram with max. lyapunov exponents ################
 
-def prop_chaotic(x, instability_threshold = 0.002):
+def prop_chaotic(x,
+#                 instability_threshold = 0.002):
+                instability_threshold = 0.004):
         
     return 1 - np.count_nonzero(x < instability_threshold)/len(x)
 
@@ -521,8 +568,8 @@ def cmap_norm_2(base, data_len = 256):
         return colorsys.hls_to_rgb(h, min(1, l * scale_l), s = s)
     
     colours_list = [scale_lightness(colourmap_base, scale) 
-                    for scale in np.linspace(2.95, 0, data_len)]
-    #            for scale in np.linspace(6, 0, data_len)]
+    #                for scale in np.linspace(2.95, 0, data_len)]
+                for scale in np.linspace(2.95, 0.5, data_len)]
     
     cmap = mpl.colors.ListedColormap(colours_list)
     norm = mpl.colors.PowerNorm(1, vmin = 0, vmax = 1)
@@ -581,7 +628,8 @@ for i, (data, ax) in enumerate(zip(data_list, axs.values())):
         
 cbar = plt.colorbar(mappable, ax = [axs['top3'], axs['bottom4']],
                     orientation = 'vertical')
-cbar.set_label(label=r'$P( \lambda > 0.002)$',weight='bold', size='20')
+#cbar.set_label(label=r'$P( \lambda > 0.002)$',weight='bold', size='20')
+cbar.set_label(label=r'$P( \lambda > 0.004)$',weight='bold', size='20')
 cbar.ax.tick_params(labelsize=14)
 
 axs['bottom1'].set_xticklabels([r'$0.3$', r'$0.5$', r'$0.7$', r'$0.9$', r'$1.1$', r'$1.3$'],
@@ -601,7 +649,9 @@ axs['top1'].set_yticklabels([r'$0.15^2$', r'$0.2^2$'],
 axs['bottom1'].yaxis.set_tick_params(rotation=360)
 axs['top1'].yaxis.set_tick_params(rotation=360)
 
-axs['bottom4'].set_yticklabels([r'$0.1^2$', r'$0.15^2$', r'$0.2^2$', r'$0.25^2$', r'$0.3^2$'],
+#axs['bottom4'].set_yticklabels([r'$0.1^2$', r'$0.15^2$', r'$0.2^2$', r'$0.25^2$', r'$0.3^2$'],
+#                               size = '14')
+axs['bottom4'].set_yticklabels([r'$0.1^2$', r'$0.12^2$', r'$0.14^2$', r'$0.16^2$', r'$0.18^2$'],
                                size = '14')
 axs['bottom4'].yaxis.set_tick_params(rotation=360)
 
@@ -631,8 +681,11 @@ fig.text(0.82, 0.92, 'growth is coupled\nto consumption', verticalalignment = 'c
                 horizontalalignment = 'center',fontsize=20,
                 color = '#2a7c44ff', path_effects= [pe.withStroke(linewidth=1, foreground="black")])
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_le.svg",
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_le.svg",
+#            bbox_inches='tight')
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_le_more_species.svg",
             bbox_inches='tight')
+
 
 #%%
 
@@ -696,60 +749,22 @@ fig.text(-0.02, 0.5, 'Variance ' + r'($\sigma_a^2$)',
 axs['top'].set_title('growth is uncoupled to\nbut increases with consumption', fontsize = 20, color = '#88d7a2ff',
                         path_effects= [pe.withStroke(linewidth=1, foreground="black")])
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_gc_u_s_le.svg",
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_gc_u_s_le.svg",
+#            bbox_inches='tight')
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/phase_diagram_gc_u_s_le_more_species.svg",
             bbox_inches='tight')
-
-# %%
-
-# more species
-
-prop_le_cr = pd.pivot_table(uncoupled_cr_df_2,
-                                        index = 'Consumption rate std',
-                                        columns = 'Average consumption rate',
-                                        values = 'Max lyapunov exponent',
-                                        aggfunc = prop_chaotic)
-
-colourmap = cmap_norm_2(mpl.colormaps['viridis_r'](0.85))
-
-sns.set_style('white')
-    
-fig, axs = plt.subplots(1, 1, layout = 'constrained', figsize = (5,4))
-
-subfig1 = sns.heatmap(prop_le_cr, ax=axs, vmin=0, vmax=1, cbar=False, cmap = colourmap['cmap'],
-                     norm = colourmap['sm'].norm)
-subfig1.invert_yaxis()
-subfig1.axhline(0, 0, 1, color = 'black', linewidth = 2)
-subfig1.axhline(3, 0, 1, color = 'black', linewidth = 2)
-subfig1.axvline(0, 0, 1, color = 'black', linewidth = 2)
-subfig1.axvline(6, 0, 1, color = 'black', linewidth = 2)
-
-mappable = subfig1.get_children()[0]
-    
-axs.set_xticklabels([])
-axs.set_yticklabels([])
-axs.set_xlabel('')
-axs.set_ylabel('')
-
-axs.set_xticklabels([r'$0.3$', r'$0.5$', r'$0.7$', r'$0.9$', r'$1.1$', r'$1.3$'],
-                               size = '14')
-axs.set_xlabel('Average consumption rate ' + r'$(\mu_c)$', fontsize=20, weight = 'bold')
-axs.set_yticklabels([r'$0.02^2$', r'$0.04^2$', r'$0.06^2$'], size = '14')
-axs.yaxis.set_tick_params(rotation=360)
-fig.text(-0.02, 0.5, 'Variance ' + r'($\sigma_a^2$)',
-         verticalalignment = 'center', horizontalalignment = 'center',
-         fontsize=20, weight = 'bold', rotation = 90, rotation_mode = 'anchor')
 
 #%%
 
 ################### Species coexistence with max. lyapunov exponents #######################
 
 data_list = [data_gLV_mu_sigma_unscaled, uncoupled_cr_df, coupled_c_cr_df, coupled_g_cr_df]
-mus = [0.9, 0.7, 0.5, 1.5]
-sigmas = [0.1, 0.1, 0.1, 0.2]
-#mus = [0.9, 0.5, 0.5, 1.5]
+#mus = [0.9, 0.7, 0.5, 1.5]
 #sigmas = [0.1, 0.1, 0.1, 0.2]
+mus = [0.9, 0.7, 0.7, 1.7]
+sigmas = [0.1, 0.1, 0.1, 0.12]
 
-palette = ['#ab00d5ff', '#88d7a2ff', '#2a7c44ff', '#2a7c44ff']
+palette = ['#ab00d5ff', '#2a7c44ff', '#2a7c44ff', '#2a7c44ff']
 
 def generate_subdata(data, mu, sigma):
     
@@ -792,6 +807,7 @@ for i, (data, ax) in enumerate(zip(plotting_data, axs.flatten())):
         #ax.axhline(1, 0, 1, color = 'grey', linewidth = 4, linestyle = '--')
         #ax.axvline(0.002, 0, 1, color = 'grey', linewidth = 4, linestyle = '--')
         subfig = sns.scatterplot(data = data, x = 'Max lyapunov exponent',
+        #                         y = 'Diversity (species)', color = palette[i],
                                  y = 'Closeness to competitive exclusion', color = palette[i],
                                  ax = ax, s = 125,
                                  edgecolor = 'black', alpha = 1)
@@ -804,33 +820,34 @@ for i, (data, ax) in enumerate(zip(plotting_data, axs.flatten())):
         
         
     subfig.set(xlabel=None)
-    subfig.set_yticks(range(2))
+    subfig.set_yticks([0, 1])
     ax.tick_params(axis='both', which='major', labelsize=16)
-    ax.set_ylim([-0.01, 1.02])
-    ax.set_xlim([-0.015, 0.012])
+    #ax.set_ylim([-0.01, 1.02])
+    ax.set_ylim([-0.02, 1])
+    ax.set_xlim([-0.015, 0.017])
+    #ax.set_xlim([-0.001, 0.015])
     
 fig.supxlabel('Max. lyapunov exponent ' + r'$(\lambda)$',fontsize=24,weight='bold', multialignment='center',
                color='#5f47aeff', path_effects= [pe.withStroke(linewidth=1, foreground="black")])
 
 fig.text(0.66, 1.05, 'Consumer - Resource model', verticalalignment = 'center',
                 horizontalalignment = 'center',fontsize=20, weight = 'bold',
-                color = '#43bf6bff',
+                color = '#2a7c44ff',
                 path_effects= [pe.withStroke(linewidth=1, foreground="black")])
 fig.text(0.17, 1.05, 'gLV', verticalalignment = 'center',
                 horizontalalignment = 'center',fontsize=20, weight = 'bold',
-                color = '#ab00d5ff',
                 path_effects= [pe.withStroke(linewidth=1, foreground="black")])
-axs[1].set_title('growth and consumption\nare uncoupled', fontsize = 20, color = '#88d7a2ff',
+axs[1].set_title('growth and consumption\nare uncoupled', fontsize = 20,
                         path_effects= [pe.withStroke(linewidth=1, foreground="black")])
-axs[2].set_title('consumption is\ncoupled to growth', fontsize = 20, color = '#2a7c44ff',
+axs[2].set_title('consumption is\ncoupled to growth', fontsize = 20,
                       path_effects= [pe.withStroke(linewidth=1, foreground="black")])
-axs[3].set_title('growth is coupled\nto consumption', fontsize = 20, color = '#2a7c44ff',
+axs[3].set_title('growth is coupled\nto consumption', fontsize = 20,
                       path_effects= [pe.withStroke(linewidth=1, foreground="black")])
 
 sns.despine()
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/le_species_coexistence.svg",
-            bbox_inches='tight')
+#plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/le_species_coexistence.svg",
+#            bbox_inches='tight')
 
 #%%
 # %%
@@ -839,7 +856,7 @@ plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dyna
 
 # stable dynamics
 stable_phase_dynamics = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_consumption_coupled_to_growth_07_004.pkl")
-competitive_exclusion_dynamics = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_growth_consumption_uncoupled_07_004.pkl")
+competitive_exclusion_dynamics = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/CR_growth_consumption_uncoupled_09_004.pkl")
 s_sim_1 = stable_phase_dynamics[2].ODE_sols['lineage 1']
 s_sim_2 = competitive_exclusion_dynamics[19].ODE_sols['lineage 0']
 del stable_phase_dynamics
@@ -853,24 +870,40 @@ d_sim_2 = dynamic_phase_dynamics_2[14].ODE_sols['lineage 4']
 del dynamic_phase_dynamics_1
 del dynamic_phase_dynamics_2
 
+# %%
+
+chaotic_gLV = gLV_communities_fixed_growth[27][20].ODE_sols['lineage 3']
+stable_gLV = gLV_communities_fixed_growth[2][2].ODE_sols['lineage 0']
+
 #%%
 
-simulations = [s_sim_1, s_sim_2, d_sim_1, d_sim_2]
-no_species = 50
+simulations = np.tile([s_sim_1, s_sim_2, d_sim_1, d_sim_2], 2)
+species = np.arange(50)
+resources = np.arange(50,100)
+colour_index = np.arange(50)
+np.random.shuffle(colour_index)
 
 cmap = mpl.colors.LinearSegmentedColormap.from_list('custom YlGBl',
                                                     ['#e9a100ff','#1fb200ff',
                                                      '#1f5a00ff','#00e9e9ff','#001256fd'],
                                                     N = 50)
 
-fig, axs = plt.subplots(1, len(simulations),figsize=(22,4),layout='constrained')
+fig, axs = plt.subplots(2, 4,figsize=(22,8),layout='constrained')
 
 for d_i, (ax, data) in enumerate(zip(axs.flatten(), simulations)):
     
-    for i in range(no_species):
+    if d_i <= 3:
+        
+        indexer = species
+        
+    else:
+        
+        indexer = resources
     
-        ax.plot(data.t, data.y[i,:].T, color = 'black', linewidth = 5.75)
-        ax.plot(data.t, data.y[i,:].T, color = cmap(i), linewidth = 5)
+    for i, spec in zip(colour_index, indexer):
+    
+        ax.plot(data.t, data.y[spec,:].T, color = 'black', linewidth = 5.75)
+        ax.plot(data.t, data.y[spec,:].T, color = cmap(i), linewidth = 5)
     
         ax.set_xticks([])
         ax.set_yticks([])
@@ -879,17 +912,28 @@ for d_i, (ax, data) in enumerate(zip(axs.flatten(), simulations)):
 
 sns.despine()
  
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/cr_community_dynamics.svg",
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/cr_community_dynamics_s.svg",
             bbox_inches='tight')
 
 # %%
 
-fig, ax = plt.subplots(1,1)
+fig, axs = plt.subplots(1, 2,figsize=(11,4),layout='constrained')
 
-sns.scatterplot(data = uncoupled_cr_df.iloc[np.where((uncoupled_cr_df['Average consumption rate'] == 0.7) & \
-                                                     (uncoupled_cr_df['Consumption rate std'] == 0.1))],
-                x = 'Volatility (species)',
-                y = 'Max lyapunov exponent',
-                s = 125, ax = ax,
-                edgecolor = 'black', alpha = 1)
-ax.set_ylim([-0.02, 0.02])
+simulations = [stable_gLV, chaotic_gLV]
+
+for d_i, (ax, data) in enumerate(zip(axs.flatten(), simulations)):
+    
+    for i, spec in zip(colour_index, species):
+    
+        ax.plot(data.t, data.y[spec,:].T, color = 'black', linewidth = 5.75)
+        ax.plot(data.t, data.y[spec,:].T, color = cmap(i), linewidth = 5)
+    
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xticklabels([])
+        ax.set_yticklabels([])
+
+sns.despine()
+ 
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/gLV_community_dynamics_s.svg",
+            bbox_inches='tight')
