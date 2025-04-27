@@ -5,14 +5,9 @@ Created on Sat Sep 14 10:42:17 2024
 @author: jamil
 """
 
-import numpy as np
-from scipy.integrate import solve_ivp
-
 from parameters import ParametersInterface
 from differential_equations import DifferentialEquationsInterface
 from community_level_properties import CommunityPropertiesInterface
-
-from differential_equations import dCR_dt, dCR_dt_2, dCR_dt_3
 
 ###########################################################
 
@@ -24,10 +19,7 @@ class Consumer_Resource_Model(ParametersInterface, DifferentialEquationsInterfac
     
     '''
     
-    def __init__(self, no_species, no_resources,
-                 growth_parameters  =  None, 
-                 consumption_parameters = None,
-                 rho = None,
+    def __init__(self, no_species, no_resources, parameters,
                  dispersal = 1e-8):
         
         '''
@@ -64,19 +56,45 @@ class Consumer_Resource_Model(ParametersInterface, DifferentialEquationsInterfac
 
         '''
         
+        #def assign_parameters(self, parameter_names, attributes):
+            
+        #    match parameter_names:
+                
+        #        case 'correlation':
+                    
+        #            suffix = ''
+                
+        #        case 'growth':
+                    
+        #            suffix = '_g'
+                
+        #        case 'consumption':
+                    
+        #            suffix = '_c'
+                
+        #        case 'death':
+                    
+        #            suffix = '_m'
+                
+        #        case 'influx':
+                    
+        #            suffix = '_K'
+                    
+        #        case 'outflux':
+                    
+        #            suffix = '_D'
+                 
+        #    for attr_name, attr_val in attributes.items():
+            
+        #        setattr(self, attr_name + suffix, attr_val)
+        
         self.no_species = no_species
         self.no_resources = no_resources
         
-        self.rho = rho
-        
-        for key, value in growth_parameters.items():
+        for key, value in parameters.items():
             
             # Assign growth function arguments as class attributes.
+            #assign_parameters(self, key, value)
             setattr(self, key, value)
             
-        for key, value in consumption_parameters.items():
-            
-            # Assign growth function arguments as class attributes.
-            setattr(self,key,value)
-        
         self.dispersal = dispersal

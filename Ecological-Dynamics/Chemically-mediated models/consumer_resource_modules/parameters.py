@@ -7,7 +7,6 @@ Created on Thu Sep 12 18:10:06 2024
 
 # %%
 import numpy as np
-from scipy import linalg
 
 # %%
 
@@ -21,6 +20,11 @@ class ParametersInterface:
                 
                 self.growth = self.growth_norm()
                 self.consumption = self.consumption_norm()
+                
+                
+            case 'correlated':
+                
+                self.consumption, self.growth = self.growth_consumption_underlying_correlation() 
                 
             case 'sparse':
                 
@@ -97,7 +101,8 @@ class ParametersInterface:
     
         '''
         
-        growth = np.abs(self.mu_g + self.sigma_g*np.random.randn(self.no_species, self.no_resources))
+        #growth = np.abs(self.mu_g + self.sigma_g*np.random.randn(self.no_species, self.no_resources))
+        growth = self.mu_g + self.sigma_g*np.random.randn(self.no_species, self.no_resources)
         
         return growth
     
@@ -123,7 +128,8 @@ class ParametersInterface:
     
         '''
         
-        consumption = np.abs(self.mu_c + self.sigma_c*np.random.randn(self.no_resources, self.no_species))
+        #consumption = np.abs(self.mu_c + self.sigma_c*np.random.randn(self.no_resources, self.no_species))
+        consumption = self.mu_c + self.sigma_c*np.random.randn(self.no_resources, self.no_species)
         
         return consumption
     
@@ -134,4 +140,15 @@ class ParametersInterface:
                                size = dims[0] * dims[1]).reshape(dims)
         
         return species_variable_interactions
-                
+    
+    def growth_consumption_underlying_correlation(self, method = 'dense', **kwargs):
+        
+        X1 = np.random.randn(self.no_resources, self.no_species)
+        X2 = np.random.randn(self.no_species, self.no_resources)
+        
+        #consumption = np.abs(self.mu_c + self.sigma_c*X1)
+        #growth = np.abs(self.mu_g + self.sigma_g*(self.rho*X1.T + np.sqrt(1 - self.rho**2)*X2))
+        consumption = self.mu_c + self.sigma_c*X1
+        growth = self.mu_g + self.sigma_g*(self.rho*X1.T + np.sqrt(1 - self.rho**2)*X2)
+        
+        return consumption, growth         

@@ -9,6 +9,7 @@ Created on Fri Sep 20 15:29:00 2024
 
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy.sparse import csr_matrix
 
 from initial_abundances import InitialConditionsInterface
 
@@ -49,13 +50,14 @@ class DifferentialEquationsInterface(InitialConditionsInterface):
             case 'consumption_funtion_of_growth':
                 
                 model = dCR_dt_3
-                
+                 
         unbounded_growth.terminal = True
                    
         return solve_ivp(model, [0, t_end], initial_abundance,
                          args=(self.no_species, self.growth, self.death,
                                self.consumption, self.influx, self.dispersal),
-                         method = 'RK45', rtol = 1e-14, atol = 1e-14,
+                         #method = 'RK45', rtol = 1e-14, atol = 1e-14,
+                         method = 'LSODA', rtol = 1e-11, atol = 1e-11,
                          t_eval = np.linspace(0, t_end, 200), events = unbounded_growth)
     
 # %%
@@ -104,7 +106,9 @@ def dCR_dt_3(t, var,
     dRdt = (resources * (influx - resources)) - \
         (resources * np.sum(growth.T * consumption * species, axis=1)) + dispersal
 
-    return np.concatenate((dSdt, dRdt))
+    return np.concatenate((dSdt, dRdt))#
+
+
 
 def unbounded_growth(t, var, *args):
     
@@ -115,4 +119,32 @@ def unbounded_growth(t, var, *args):
     else: 
         
         return 1
+
+#def jacobian(t, var,
+#             no_species, 
+#             growth, death, consumption, influx,
+#             dispersal):
+    
+#    species = var[:no_species]
+#    resources = var[no_species:]
+    
+#    s_index = np.arange(len(species))
+#    r_index = np.arange(start = no_species, stop = no_species + len(resources))
+                         
+#    dNi_dNi = np.sum(growth * resources, axis=1) - death
+
+#    dRm_dRm = 1 - 2*resources - np.sum(consumption * species, axis=1)
+    
+#    dNi_dRm = (growth * resources).flatten()
+    
+#    dRm_dNi = (-consumption * species).flatten()
+    
+#    data = np.concatenate((dNi_dNi, dRm_dRm, dNi_dRm, dRm_dNi))
+#    rows = np.concatenate((s_index, r_index, s_index, r_index))
+#    columns = np.concatenate((s_index, r_index, r_index, s_index))
+    
+#    jacobian_matrix = csr_matrix((data, (rows, columns)),
+#                                 shape = (len(var), len(var))).toarray()
+    
+#    return jacobian_matrix
     

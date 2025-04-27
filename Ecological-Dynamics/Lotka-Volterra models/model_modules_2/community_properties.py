@@ -14,7 +14,7 @@ from scipy.signal import peak_prominences
 
 class CommunityPropertiesInterface:
     
-    def calculate_community_properties(self,lineages,from_which_time):
+    def calculate_community_properties(self, from_time = None):
         
         '''
         
@@ -24,17 +24,16 @@ class CommunityPropertiesInterface:
        
         Properties calculated: 
             species diversity
-            species composition
-            invasibility/reinvadability
-            unique species compositions 
-            community function, if applicable
+            community volatility
                                 
         Parameters
         ----------
         lineages : list or np.ndarray of ints
             list of lineage indexes.
-        from_which_time : float
+        from_time : Optional, float
             time to start calculating community properties.
+            The default is None. If None, properties are calculated during the 
+            last 500 time points of the simulation.
 
         Raises
         ------
@@ -47,6 +46,14 @@ class CommunityPropertiesInterface:
 
         '''
         
+        if from_time:
+            
+            from_which_time = from_time
+            
+        else: 
+            
+            from_which_time = self.t_end - 500
+        
         if self.t_end < from_which_time:
             
             raise Exception("Start time must be less than the end of simulation.")
@@ -54,28 +61,15 @@ class CommunityPropertiesInterface:
         ##################### Community survival fraction (final diversity)
         
         self.survival_fraction = {'lineage ' + str(i) : 
-                                     self.diversity(community, 1e-2, from_which_time)
-                                     for i, community in enumerate(self.ODE_sols.values())}
-        
-        self.final_diversity, self.final_composition = {}, {}
-        
-        for lineage in lineages:
-            
-            lineage_key = 'lineage ' + str(lineage)
-            
-            # returns species diversity and composition between from_which_time and t_end
-            final_popdyn = \
-                self.species_diversity(lineage_key,[from_which_time,self.t_end])
-                
-            self.final_composition[lineage_key] = final_popdyn[0]
-            self.final_diversity[lineage_key] = final_popdyn[1]
-        
+                                     self.diversity(simulation, 1e-2, from_which_time)
+                                     for i, simulation in enumerate(self.ODE_sols.values())}
+           
         ############## Presence of volatile/fluctuating dynamics
         
         self.volatility = \
-            {'lineage ' + str(lineage) : self.detect_invasibility('lineage ' + str(lineage),
+            {'lineage ' + str(i) : self.detect_invasibility('lineage ' + str(i),
                                                                   from_which_time) \
-                 for lineage in lineages}
+                 for i, simulation in enumerate(self.ODE_sols.values())}
                 
     def diversity(self, data, extinction_threshold, from_time):
         
