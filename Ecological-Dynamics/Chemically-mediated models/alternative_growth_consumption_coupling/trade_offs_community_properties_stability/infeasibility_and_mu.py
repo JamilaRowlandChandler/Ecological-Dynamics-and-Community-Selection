@@ -20,7 +20,7 @@ from matplotlib.colors import PowerNorm
 from matplotlib.colors import LinearSegmentedColormap
 from time import time
 
-os.chdir('C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Chemically-mediated models/self_limiting_alternative_growth_consumption_coupling')
+os.chdir('C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Chemically-mediated models/alternative_growth_consumption_coupling')
 
 from simulation_functions import create_and_delete_CR, \
     create_df_and_delete_simulations, prop_chaotic, distance_from_instability, \

@@ -167,10 +167,18 @@ def create_df_and_delete_simulations(filename, parameters, parameter_cols = None
     
     return df
 
+def create_df_and_delete_simulations_2(path, file, parameters, parameter_cols = None):
+    
+    CR_communities = pd.read_pickle(path + file)
+    
+    df = CR_dynamics_df(CR_communities, parameters, parameter_cols)
+    
+    return df
+
 # %%
 
 def prop_chaotic(x,
-                instability_threshold = 0.0025):
+                instability_threshold = 0.00):
         
     return 1 - np.count_nonzero(x < instability_threshold)/len(x)
 

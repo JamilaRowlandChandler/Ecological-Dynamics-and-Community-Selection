@@ -36,7 +36,7 @@ class ParametersInterface:
                 self.eff_consumption, self.eff_growth = \
                     self.consumption, self.growth * self.consumption.T
                     
-            case 'consumption funtion of growth':
+            case 'consumption function of growth':
                 
                 self.growth = self.normal_parameters(self.mu_g, self.sigma_g,
                                                      (self.no_species, self.no_resources))
