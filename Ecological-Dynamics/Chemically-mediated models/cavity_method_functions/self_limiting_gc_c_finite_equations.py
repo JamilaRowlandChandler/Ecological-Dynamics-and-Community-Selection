@@ -30,6 +30,9 @@ def self_consistency_equations(M, gamma,
     sigma_kappa = np.sqrt(q_R * M *((mu_c*sigma_g)**2 + (mu_g*sigma_c)**2 + \
                                     (sigma_c*sigma_g)**2) \
                           + sigma_m**2)
+    #sigma_kappa = np.sqrt(q_R * M *((mu_g*sigma_c)**2 + \
+    #                                (sigma_c*sigma_g)**2) \
+    #                      + sigma_m**2)
     
     # std. in resource growth rate
     sigma_omega = np.sqrt((sigma_c**2 * M * q_N)/gamma + sigma_K**2)
@@ -54,6 +57,8 @@ def self_consistency_equations(M, gamma,
     
     A = mu_g * sigma_c**2 * M * chi_R
     B = 1 - (mu_g * sigma_c**2 * M * v_N)/gamma
+    #A = M * chi_R * mu_g * (mu_c**2 + sigma_c**2)
+    #B = 1 - (M * v_N * mu_g * (mu_c**2 + sigma_c**2))/gamma
     
     ##### Species self consistency equations ####
     eq_phi_N = erf_dk

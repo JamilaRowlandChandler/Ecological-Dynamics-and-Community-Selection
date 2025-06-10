@@ -336,10 +336,57 @@ def plot_dynamics(simulations, resource_pool_sizes):
 
 resource_pool_sizes = np.arange(25, 275, 25)
 
+# %%
+
 M_effect_fixed_mu_g(resource_pool_sizes, np.array([0.25, 3]), 1.6/np.sqrt(150),
                     12, {'mu_c': 1.25, 'K' : 1, 'm' : 1, 'gamma' : 1})
 
 # %%
 
-df_mu_c_M = generate_df()
-df_mu_c_M['no_resources'] = np.int32(df_mu_c_M['no_resources'])
+df_mu_g_M = generate_df()
+df_mu_g_M['no_resources'] = np.int32(df_mu_g_M['no_resources'])
+
+# %%
+
+fig, axs = generic_heatmaps(df_mu_g_M,
+                            'no_resources', 'mu_g', 
+                           'resource pool size, ' + r'$M$',
+                           'average resource use efficiency, ' + r'$\mu_g$',
+                            ['Max. lyapunov exponent'], 'Purples',
+                            '',
+                            (1, 1), (6.5, 6.5),
+                            pivot_functions = {'Max. lyapunov exponent' : le_pivot},
+                            specify_min_max={'Max. lyapunov exponent' : [0,1]})
+
+axs.set_xticks(np.arange(0.5, len(resource_pool_sizes) + 0.5, 1),
+                          labels = resource_pool_sizes, fontsize = 14)
+
+cbar = axs.collections[0].colorbar
+cbar.set_label(label = 'Proportion of simulations with max. LE ' + r'$> 0.00$',
+               size = '14')
+cbar.ax.tick_params(labelsize = 12)
+
+plt.show()
+
+# %%
+
+fig, ax = plt.subplots(1, 1)
+
+sns.lineplot(x = df_mu_g_M.iloc[np.where(df_mu_g_M['no_resources'] == 100)]['mu_g'],
+             y = df_mu_g_M.iloc[np.where(df_mu_g_M['no_resources'] == 100)]['rho']**2,
+             ax = ax)
+
+sns.lineplot(x = df_mu_g_M.iloc[np.where(df_mu_g_M['no_resources'] == 100)]['mu_g'],
+             y = df_mu_g_M.iloc[np.where(df_mu_g_M['no_resources'] == 100)]['species packing 2'],
+             ax = ax)
+
+plt.show()
+
+# %%
+
+fig, ax = plt.subplots(1, 1)
+
+sns.lineplot(data = df_mu_g_M.iloc[np.where(df_mu_g_M['mu_g'] == 0.5)],
+             x = 'no_resources', y = 'species packing 2', ax = ax)
+
+plt.show()

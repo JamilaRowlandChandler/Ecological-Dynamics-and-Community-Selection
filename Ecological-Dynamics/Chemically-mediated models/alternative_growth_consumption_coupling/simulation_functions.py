@@ -10,6 +10,8 @@ import pandas as pd
 import sys
 from copy import deepcopy
 import pickle
+import seaborn as sns
+from matplotlib import pyplot as plt
 
 sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Chemically-mediated models/consumer_resource_modules_2')
 from models import Consumer_Resource_Model
@@ -209,3 +211,153 @@ def distance_from_infeasibility(df):
     gamma = M/S
     
     return phi_R - phi_N/gamma
+
+# %%
+
+def generic_heatmaps(df, x, y, xlabel, ylabel, variables, cmaps, titles,
+                     fig_dims, figsize,
+                     pivot_functions = None, is_logged = None, specify_min_max = None,
+                     mosaic = None, gridspec_kw = None):
+    
+    '''
+
+    Parameters
+    ----------
+    df : TYPE
+        DESCRIPTION.
+    variables : TYPE
+        DESCRIPTION.
+    variable_label : TYPE
+        DESCRIPTION.
+    cmaps : TYPE
+        DESCRIPTION.
+    titles : TYPE
+        DESCRIPTION.
+    fig_dims : TYPE
+        DESCRIPTION.
+    is_logs : TYPE, optional
+        DESCRIPTION. The default is None.
+    specify_min_max : TYPE, optional
+        DESCRIPTION. The default is None.
+    mosaic : TYPE, optional
+        DESCRIPTION. The default is None.
+    gridspec_kw : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    fig : TYPE
+        DESCRIPTION.
+    axs : TYPE
+        DESCRIPTION.
+
+    '''
+    
+    if pivot_functions is None:
+    
+        pivot_tables = {variable : df.pivot(index = y, columns = x, values = variable)
+                        for variable in variables}
+        
+    else:
+        
+        pivot_tables = {variable : (df.pivot(index = y, columns = x, values = variable)
+                                    if pivot_functions[variable] is None 
+                                    else
+                                    pivot_functions[variable](df, index = y,
+                                                              columns = x,
+                                                              values = variable)[0]) 
+                        for variable in variables}
+    if is_logged is None:
+        
+        pivot_tables_plot = pivot_tables
+        
+    else:
+    
+        pivot_tables_plot = pivot_tables | \
+                            {variable : np.log10(np.abs(pivot_tables[variable]))
+                             for variable in is_logged}
+    
+    start_v_min_max = {variable : [np.min(pivot_table), np.max(pivot_table)]
+                       for variable, pivot_table in pivot_tables_plot.items()}
+    
+    if specify_min_max:
+        
+        v_min_max = start_v_min_max | specify_min_max
+        
+    else:
+        
+        v_min_max = start_v_min_max
+        
+    sns.set_style('white')
+    
+    if mosaic:
+        
+        fig, axs = plt.subplot_mosaic(mosaic, figsize = figsize,
+                                      gridspec_kw = gridspec_kw, layout = 'constrained')
+    
+    else:
+        
+        fig, axs = plt.subplots(fig_dims[0], fig_dims[1], figsize = figsize)
+
+    fig.supxlabel(xlabel, fontsize = 16, weight = 'bold')
+    fig.supylabel(ylabel, fontsize = 16, weight = 'bold', horizontalalignment = 'center',
+                  verticalalignment = 'center')
+    
+    if fig_dims == (1,1):
+        
+        subfig = sns.heatmap(pivot_tables_plot[variables[0]], ax = axs,
+                             vmin = v_min_max[variables[0]][0],
+                             vmax = v_min_max[variables[0]][1],
+                             cbar = True, cmap = cmaps)
+        
+        subfig.axhline(0, 0, 1, color = 'black', linewidth = 2)
+        subfig.axhline(pivot_tables_plot[variables[0]].shape[0], 0, 1,
+                       color = 'black', linewidth = 2)
+        subfig.axvline(0, 0, 1, color = 'black', linewidth = 2)
+        subfig.axvline(pivot_tables_plot[variables[0]].shape[1], 0, 1,
+                       color = 'black', linewidth = 2)
+
+        axs.set_yticks([0.5, len(np.unique(df[y])) - 0.5],
+                      labels = [np.round(np.min(df[y]), 3),
+                                np.round(np.max(df[y]), 3)], fontsize = 14)
+        axs.set_xticks([0.5, len(np.unique(df[x])) - 0.5], 
+                      labels = [np.round(np.min(df[x]), 3),
+                                np.round(np.max(df[x]), 3)],
+                      fontsize = 14, rotation = 0)
+        axs.set_xlabel('')
+        axs.set_ylabel('')
+        axs.invert_yaxis()
+        axs.set_title(titles, fontsize = 16, weight = 'bold', y = 1.05)
+        
+    else:
+        
+        for ax, variable, cmap, title in zip(axs.flatten()[:len(variables)], 
+                                             variables, cmaps, titles):
+            
+            #breakpoint()
+            
+            subfig = sns.heatmap(pivot_tables_plot[variable], ax = ax,
+                                 vmin = v_min_max[variable][0],
+                                 vmax = v_min_max[variable][1],
+                                 cbar = True, cmap = cmap)
+            
+            subfig.axhline(0, 0, 1, color = 'black', linewidth = 2)
+            subfig.axhline(pivot_tables_plot[variables[0]].shape[0], 0, 1,
+                           color = 'black', linewidth = 2)
+            subfig.axvline(0, 0, 1, color = 'black', linewidth = 2)
+            subfig.axvline(pivot_tables_plot[variables[0]].shape[1], 0, 1,
+                           color = 'black', linewidth = 2)
+    
+            ax.set_yticks([0.5, len(np.unique(df[y])) - 0.5],
+                          labels = [np.round(np.min(df[y]), 3),
+                                    np.round(np.max(df[y]), 3)], fontsize = 14)
+            ax.set_xticks([0.5, len(np.unique(df[x])) - 0.5], 
+                          labels = [np.round(np.min(df[x]), 3),
+                                    np.round(np.max(df[x]), 3)],
+                          fontsize = 14, rotation = 0)
+            ax.set_xlabel('')
+            ax.set_ylabel('')
+            ax.invert_yaxis()
+            ax.set_title(title, fontsize = 16, weight = 'bold', y = 1.05)
+                    
+    return fig, axs

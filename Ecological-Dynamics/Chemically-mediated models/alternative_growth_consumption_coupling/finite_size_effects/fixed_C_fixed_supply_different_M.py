@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Fri Jun  6 10:31:30 2025
+
+@author: jamil
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Wed May  7 19:27:31 2025
 
 @author: jamil
@@ -37,7 +44,7 @@ import self_consistency_equation_functions as sce
 
 def M_effect_fixed_C(Ms, C_range, sigma_C, n, fixed_parameters):
     
-    subdirectory = 'finite_effects_fixed_C_2'
+    subdirectory = 'finite_effects_fixed_C_fixed_supply'
     
     full_directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
                         + subdirectory
@@ -48,12 +55,14 @@ def M_effect_fixed_C(Ms, C_range, sigma_C, n, fixed_parameters):
         
     for M in tqdm(Ms, position = 0, leave = True):
         
+        fixed_parameters_copy = copy(fixed_parameters)
+        fixed_parameters_copy['K'] /= M
+         
         mu_c_range = C_range/M 
         sigma = sigma_C/np.sqrt(M)
         
         parameters = generate_parameters(mu_c_range, [sigma, sigma], n,
-                                         fixed_parameters)
-        for parm_set in parameters: parm_set['sigma_g'] = sigma_C/np.sqrt(150)
+                                         fixed_parameters_copy)
         
         for parm_set in tqdm(parameters, position = 0, leave = True):
     
@@ -66,17 +75,13 @@ def M_effect_fixed_C(Ms, C_range, sigma_C, n, fixed_parameters):
 # %%
 
 def generate_parameters(mu_range, sigma_range, n, fixed_parameters,
-                        v_parm_names = ['mu_c', 'sigma_c', 'sigma_g']):
+                        v_parm_names = ['mu_c', 'sigma_c']):
     
-    mu_sigma_combinations = np.unique(sce.parameter_combinations([mu_range,
-                                                                  sigma_range],
-                                                                 n), axis = 1)
-   
     # array of variable parameter combinations
-    variable_parameters = np.round(np.vstack([mu_sigma_combinations,
-                                              mu_sigma_combinations[1, :]]),
-                                   6)
-    
+    variable_parameters = np.round(np.unique(sce.parameter_combinations([mu_range,
+                                                              sigma_range],
+                                                             n), axis = 1), 6)
+   
     # array of all parameter combinations
     parameters = sce.variable_fixed_parameters(variable_parameters,
                                                v_parm_names,
@@ -89,7 +94,7 @@ def generate_parameters(mu_range, sigma_range, n, fixed_parameters,
 def generate_df():
     
     full_directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                        + 'finite_effects_fixed_C_2'
+                        + 'finite_effects_fixed_C_fixed_supply'
     
     df = pd.concat(community_properties_df(full_directory), 
                    axis = 0, ignore_index = True)
@@ -273,11 +278,13 @@ def generic_heatmaps(df, x, y, xlabel, ylabel, variables, cmaps, titles,
 # %%
 
 resource_pool_sizes = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250]
+#resource_pool_sizes = [250]
 
 # %%
 
 M_effect_fixed_C(resource_pool_sizes, np.array([100, 300]), 1.6,
-                 15, {'mu_g': 1, 'K' : 1, 'm' : 1, 'gamma' : 1})
+                 15, {'mu_g': 1, 'sigma_g' : 1.6/np.sqrt(150), 'K' : 150,
+                      'm' : 1, 'gamma' : 1})
 
 # %%
 
@@ -287,29 +294,29 @@ df_C_M['<C>'] = np.round(df_C_M['mu_c'] * df_C_M['no_resources'], 2)
 
 # %%
 
-fig, axs = generic_heatmaps(df_C_M,
+fig, axs = generic_heatmaps(df_C_M.iloc[np.where((df_C_M['<C>'] <= 260) &
+                                                 (df_C_M['no_resources'] > 25))],
                             'no_resources', '<C>', 
                            'resource pool size, ' + r'$M$',
                            'average total consumption rate of a resource, ' + r'$<C>$',
                             ['Max. lyapunov exponent'], 'Purples',
-                            '(For a given total consumption rate), ' + \
-                            'communities\nstabilise with increasing resource pool size',
+                            'Positive resource diversity-stability relationship' + \
+                            ' is\nmaintained when resource supply is scaled by diversity.',
                             (1, 1), (6.5, 6.5),
                             pivot_functions = {'Max. lyapunov exponent' : le_pivot},
                             specify_min_max={'Max. lyapunov exponent' : [0,1]})
 
-axs.set_xticks(np.arange(0.5, len(resource_pool_sizes) + 0.5, 1),
-                          labels = resource_pool_sizes, fontsize = 14)
+axs.set_xticks(np.arange(0.5, len(resource_pool_sizes) - 0.5, 1),
+                          labels = resource_pool_sizes[1:], fontsize = 14)
 
 cbar = axs.collections[0].colorbar
 cbar.set_label(label = 'Proportion of simulations with max. LE ' + r'$> 0.00$',
                size = '14')
 cbar.ax.tick_params(labelsize = 12)
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_fixed_C_M.png",
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_C_M_scaled_supply.png",
             bbox_inches='tight')
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_fixed_C_M.svg",
+plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_C_M_scaled_supply.svg",
             bbox_inches='tight')
 
 plt.show()
-

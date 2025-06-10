@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed May  7 19:27:31 2025
+Created on Fri May  9 15:32:30 2025
 
 @author: jamil
 """
@@ -13,10 +13,6 @@ import os
 from tqdm import tqdm
 from matplotlib import pyplot as plt
 import seaborn as sns
-from matplotlib import colormaps
-from matplotlib.colors import TwoSlopeNorm
-from matplotlib.colors import LogNorm
-from matplotlib.colors import PowerNorm
 from matplotlib.colors import LinearSegmentedColormap
 
 os.chdir("C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
@@ -33,11 +29,12 @@ from simulation_functions import \
 sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Chemically-mediated models/cavity_method_functions')
 import self_consistency_equation_functions as sce
 
+
 # %%
 
-def M_effect_fixed_C(Ms, C_range, sigma_C, n, fixed_parameters):
+def M_effect_fixed_mu_g(Ms, mu_g_range, sigma, n, fixed_parameters):
     
-    subdirectory = 'finite_effects_fixed_C_2'
+    subdirectory = 'finite_effects_fixed_mu_g_3' # 'finite_effects_fixed_mu_g_2'
     
     full_directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
                         + subdirectory
@@ -48,17 +45,19 @@ def M_effect_fixed_C(Ms, C_range, sigma_C, n, fixed_parameters):
         
     for M in tqdm(Ms, position = 0, leave = True):
         
-        mu_c_range = C_range/M 
-        sigma = sigma_C/np.sqrt(M)
+        fixed_parameters_copy = copy(fixed_parameters)
         
-        parameters = generate_parameters(mu_c_range, [sigma, sigma], n,
-                                         fixed_parameters)
-        for parm_set in parameters: parm_set['sigma_g'] = sigma_C/np.sqrt(150)
+        fixed_parameters_copy['mu_c'] /= M
         
-        for parm_set in tqdm(parameters, position = 0, leave = True):
+        parameters = generate_parameters(mu_g_range, [sigma, sigma], n,
+                                         fixed_parameters_copy)
+        
+        for parm_set in parameters: parm_set['sigma_c'] = 1.6/np.sqrt(M)
     
+        for parm_set in tqdm(parameters, position = 0, leave = True):
+        
             create_and_delete_CR(subdirectory + "/CR_self_limiting_" + str(M) + \
-                                 str(parm_set['mu_c']),
+                                 str(parm_set['mu_g']),
                                  M, M, parm_set,
                                  growth_consumption_function = 'growth function of consumption',
                                  no_communities = 10, t_end = 7000)
@@ -66,7 +65,7 @@ def M_effect_fixed_C(Ms, C_range, sigma_C, n, fixed_parameters):
 # %%
 
 def generate_parameters(mu_range, sigma_range, n, fixed_parameters,
-                        v_parm_names = ['mu_c', 'sigma_c', 'sigma_g']):
+                        v_parm_names = ['mu_g', 'sigma_c', 'sigma_g']):
     
     mu_sigma_combinations = np.unique(sce.parameter_combinations([mu_range,
                                                                   sigma_range],
@@ -83,13 +82,15 @@ def generate_parameters(mu_range, sigma_range, n, fixed_parameters,
                                                fixed_parameters)
     
     return parameters
-
+                
 # %%
 
 def generate_df():
     
+    #full_directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+    #                    + 'finite_effects_fixed_mu_g_2'
     full_directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                        + 'finite_effects_fixed_C_2'
+                        + 'finite_effects_fixed_mu_g_3'
     
     df = pd.concat(community_properties_df(full_directory), 
                    axis = 0, ignore_index = True)
@@ -269,32 +270,97 @@ def generic_heatmaps(df, x, y, xlabel, ylabel, variables, cmaps, titles,
         
     return fig, axs
 
+# %%
+
+def plot_dynamics(simulations, resource_pool_sizes):
+    
+    def indices_and_cmaps(M):
+        
+        species, resources = np.arange(M), np.arange(M, M*2)
+        
+        s_colour_index, r_colour_index = np.arange(M), np.arange(M)
+        np.random.shuffle(s_colour_index)
+        np.random.shuffle(r_colour_index)
+        
+        cmap_s = LinearSegmentedColormap.from_list('custom YlGBl',
+                                                   ['#e9a100ff','#1fb200ff',
+                                                    '#1f5a00ff','#00e9e9ff','#001256fd'],
+                                                   N = M)
+        
+        cmap_r = LinearSegmentedColormap.from_list('custom YlGBl',
+                                                   ['#e9a100ff','#1fb200ff',
+                                                    '#1f5a00ff','#00e9e9ff','#001256fd'],
+                                                   N = M)
+        
+        return [species, s_colour_index, cmap_s], [resources, r_colour_index,
+                                                   cmap_r]
+    
+    i_c_rp = [indices_and_cmaps(M) for M in resource_pool_sizes]
+
+    sns.set_style('white')
+
+    fig, axs = plt.subplots(2, len(simulations), figsize = (5*len(simulations), 7),
+                            layout = 'constrained')
+                            #,
+                           #sharex = True, sharey = True)
+    
+    for ax, data, index_cmap_data in zip(axs[0, :], simulations, i_c_rp):
+        
+        species, s_colour_index, cmap = index_cmap_data[0]
+        
+        for i, spec in zip(s_colour_index, species):
+        
+            ax.plot(data.t, data.y[spec,:].T, color = 'black', linewidth = 3.75)
+            ax.plot(data.t, data.y[spec,:].T, color = cmap(i), linewidth = 3)
+        
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+            
+    for ax, data, index_cmap_data in zip(axs[1, :], simulations, i_c_rp):
+        
+        resources, r_colour_index, cmap = index_cmap_data[1]
+        
+        for i, res in zip(r_colour_index, resources):
+        
+            ax.plot(data.t, data.y[res,:].T, color = 'black', linewidth = 3.75)
+            ax.plot(data.t, data.y[res,:].T, color = cmap(i), linewidth = 3)
+        
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xticklabels([])
+            ax.set_yticklabels([])
+
+    sns.despine()
+    
+    return fig, axs
 
 # %%
 
-resource_pool_sizes = [25, 50, 75, 100, 125, 150, 175, 200, 225, 250]
+resource_pool_sizes = np.arange(50, 275, 25)
 
 # %%
 
-M_effect_fixed_C(resource_pool_sizes, np.array([100, 300]), 1.6,
-                 15, {'mu_g': 1, 'K' : 1, 'm' : 1, 'gamma' : 1})
+#M_effect_fixed_mu_g(resource_pool_sizes, np.array([0.25, 3]), 1.6/np.sqrt(150),
+#                    12, {'mu_c': 100, 'K' : 1, 'm' : 1, 'gamma' : 1})
+M_effect_fixed_mu_g(resource_pool_sizes, np.array([0.25, 3]), 1.6/np.sqrt(150),
+                    12, {'mu_c': 128.57, 'K' : 1, 'm' : 1, 'gamma' : 1})
 
 # %%
 
-df_C_M = generate_df()
-df_C_M['no_resources'] = np.int32(df_C_M['no_resources'])
-df_C_M['<C>'] = np.round(df_C_M['mu_c'] * df_C_M['no_resources'], 2)
+df_mu_g_M = generate_df()
+df_mu_g_M['no_resources'] = np.int32(df_mu_g_M['no_resources'])
 
 # %%
 
-fig, axs = generic_heatmaps(df_C_M,
-                            'no_resources', '<C>', 
+fig, axs = generic_heatmaps(df_mu_g_M[df_mu_g_M['mu_g'] <= 2],
+                            'no_resources', 'mu_g', 
                            'resource pool size, ' + r'$M$',
-                           'average total consumption rate of a resource, ' + r'$<C>$',
+                           'average resource use efficiency, ' + r'$\mu_g$',
                             ['Max. lyapunov exponent'], 'Purples',
-                            '(For a given total consumption rate), ' + \
-                            'communities\nstabilise with increasing resource pool size',
-                            (1, 1), (6.5, 6.5),
+                            '',
+                            (1, 1), (6.5, 4),
                             pivot_functions = {'Max. lyapunov exponent' : le_pivot},
                             specify_min_max={'Max. lyapunov exponent' : [0,1]})
 
@@ -306,10 +372,22 @@ cbar.set_label(label = 'Proportion of simulations with max. LE ' + r'$> 0.00$',
                size = '14')
 cbar.ax.tick_params(labelsize = 12)
 
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_fixed_C_M.png",
-            bbox_inches='tight')
-plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_fixed_C_M.svg",
-            bbox_inches='tight')
+plt.show()
+
+# %%
+
+sns.lineplot(x = df_mu_g_M[df_mu_g_M['mu_g'] <= 2]['mu_g'],
+             y = df_mu_g_M[df_mu_g_M['mu_g'] <= 2]['rho']**2)
+sns.lineplot(x = df_mu_g_M[df_mu_g_M['mu_g'] <= 2]['mu_g'],
+             y = df_mu_g_M[df_mu_g_M['mu_g'] <= 2]['species packing 2'])
 
 plt.show()
 
+# %%
+
+sns.lineplot(x = df_mu_g_M[df_mu_g_M['no_resources'] == 200]['mu_g'],
+             y = df_mu_g_M[df_mu_g_M['no_resources'] == 200]['rho']**2)
+sns.lineplot(x = df_mu_g_M[df_mu_g_M['no_resources'] == 200]['mu_g'],
+             y = df_mu_g_M[df_mu_g_M['no_resources'] == 200]['species packing 2'])
+
+plt.show()
