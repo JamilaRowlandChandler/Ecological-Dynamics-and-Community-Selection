@@ -604,7 +604,7 @@ def Stability_Plot():
                 horizontalalignment='left', verticalalignment='top',
                 transform=axs["I_C"].transAxes)
 
-    axs["I_C"].annotate("Instability\nthreshold", xytext=(55, 0.6), xy=(134, 0.6),
+    axs["I_C"].annotate("Stability\nthreshold", xytext=(55, 0.6), xy=(134, 0.6),
                     color = 'grey', fontsize = 14, weight = 'bold',
                     va = 'center', multialignment = 'center',
                     arrowprops={'arrowstyle': '-|>', 'color' : 'gray', 'lw' : 2})
