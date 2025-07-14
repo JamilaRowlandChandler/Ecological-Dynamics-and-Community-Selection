@@ -15,7 +15,7 @@ class ParametersInterface:
     # Public methods
             
     def growth_consumption_rates(self, method, mu_c, sigma_c, mu_g, sigma_g,
-                                 **kwargs):
+                                 conserve_mass = False, **kwargs):
         
         '''
         
@@ -54,7 +54,7 @@ class ParametersInterface:
                 
                 rho = kwargs.get('rho', None)
                 
-                if rho is None:
+                if not rho:
                     
                     raise Exception('Please supply a value for rho.\n' + \
                                     '(In growth_consumption_method(), add a rho = x argument.)')
@@ -70,19 +70,29 @@ class ParametersInterface:
                 
                 self.consumption = self.mu_c + self.sigma_c*X_c
                 self.rue = self.mu_g + self.sigma_g*X_g
+                
+                if conserve_mass == True:
+                    
+                    self.rue[self.rue > 1] = 1
+                
                 self.growth = self.rue * self.consumption.T
             
             case 'consumption function of growth':
                 
                 self.growth = self.mu_g + self.sigma_g*X_g
                 self.rue = self.mu_c + self.sigma_c*X_c
+                
+                if conserve_mass == True:
+                    
+                    self.rue[self.rue > 1] = 1
+                    
                 self.consumption = self.rue * self.growth.T
                 
             case 'user supplied':
                 
                 consumption, growth = kwargs.get('consumption', None), kwargs.get('growth', None)
                 
-                if consumption is None or growth is None:
+                if not consumption or not growth:
                         
                     raise Exception('Please supply your growth or consumption rates.\n'
                                     '(In growth_consumption_method(), add the arguments ' 
