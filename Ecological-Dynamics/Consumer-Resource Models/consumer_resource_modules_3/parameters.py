@@ -79,6 +79,8 @@ class ParametersInterface:
             
             case 'consumption function of growth':
                 
+                #self.rho = ...
+                
                 self.growth = self.mu_g + self.sigma_g*X_g
                 self.rue = self.mu_c + self.sigma_c*X_c
                 
@@ -136,7 +138,8 @@ class ParametersInterface:
             case 'constant':
                 
                 try:
-                
+                    
+                    setattr(self, p_label + '_val', parameter_args[p_label])
                     setattr(self, p_label, parameter_args[p_label] * np.ones(dims))
                 
                 except KeyError as e:

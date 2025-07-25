@@ -17,36 +17,37 @@ os.chdir("C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-C
     
 sys.path.insert(0, "C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
                     "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling")
-from simulation_functions import CRM_across_parameter_space, CRM_df, \
-    le_pivot, generic_heatmaps
+from simulation_functions import CRM_across_parameter_space, \
+    generate_simulation_df, le_pivot, generic_heatmaps
 
 sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/cavity_method_functions')
 import self_consistency_equation_functions as sce
 
 # %%
 
-def M_effect_fixed_C(M_range, mu_C_range, sigma_C, n, fixed_parameters):
+def M_effect_sigma_c(M_range, sigma_C_range, mu_C, n, fixed_parameters,
+                     subdirectory):
     
-    parameters = generate_parameters_M_C(M_range, mu_C_range, sigma_C, n,
+    parameters = generate_parameters_M_C(M_range, sigma_C_range, mu_C, n,
                                          fixed_parameters)
     
-    CRM_across_parameter_space(parameters, 'finite_effects_fixed_C_final',
-                               ['M', 'mu_c'])
+    CRM_across_parameter_space(parameters, subdirectory,
+                               ['M', 'sigma_c'])
                     
 # %%
 
-def generate_parameters_M_C(M_range, mu_C_range, sigma_C, n,
+def generate_parameters_M_C(M_range, sigma_C_range, mu_C, n,
                             fixed_parameters):
     
-    M_mu_C_combinations = np.unique(sce.parameter_combinations([M_range,
-                                                                mu_C_range],
+    M_sigma_C_combinations = np.unique(sce.parameter_combinations([M_range,
+                                                                sigma_C_range],
                                                                n),
                                     axis = 1)
     
-    variable_parameters = np.vstack([M_mu_C_combinations[0, :]/fixed_parameters['gamma'],
-                                     M_mu_C_combinations[0, :],
-                                     M_mu_C_combinations[1, :]/M_mu_C_combinations[0, :],
-                                     np.repeat(sigma_C, M_mu_C_combinations.shape[1])/np.sqrt(M_mu_C_combinations[0, :])])
+    variable_parameters = np.vstack([M_sigma_C_combinations[0, :]/fixed_parameters['gamma'],
+                                     M_sigma_C_combinations[0, :],
+                                     np.repeat(mu_C, M_sigma_C_combinations.shape[1])/M_sigma_C_combinations[0, :],
+                                     M_sigma_C_combinations[1, :]/np.sqrt(M_sigma_C_combinations[0, :])])
 
     # array of all parameter combinations
     parameters = sce.variable_fixed_parameters(variable_parameters,
@@ -59,24 +60,6 @@ def generate_parameters_M_C(M_range, mu_C_range, sigma_C, n,
         parms['M'] = np.int32(parms['M'])
     
     return parameters
-
-# %%
-
-def generate_df(directory):
-    
-    parameters = ['no_species', 'no_resources', 'mu_c', 'sigma_c', 'mu_y',
-                  'sigma_y', 'd_val', 'b_val'] 
-    
-    df = CRM_df(directory, parameters)
-    
-    for var in ['rho', 'mu_c', 'mu_y', 'sigma_c', 'sigma_y', 'mu_c/M',
-                'sigma_c/root_M']:
-        
-        df[var] = np.round(df[var], 6)
-    
-    df['no_resources'] = np.int32(df['no_resources'])
-    
-    return df
     
 # %%
 
@@ -84,24 +67,32 @@ resource_pool_sizes = np.arange(50, 275, 25)
 
 # %%
 
-M_effect_fixed_C(resource_pool_sizes, np.array([100, 250]), 1.6,
+M_effect_sigma_c(resource_pool_sizes, np.array([0.5, 2.5]), 160,
                  11, {'mu_y': 1, 'sigma_y' : 1.6/np.sqrt(150), 'b' : 1,
-                      'd' : 1, 'gamma' : 1})
+                      'd' : 1, 'gamma' : 1},
+                 'finite_effects_sigma_c_final')
 
 # %%
 
-df_mu_c_M = generate_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                         + 'finite_effects_fixed_C_final')
+M_effect_sigma_c(resource_pool_sizes, np.array([0.5, 2.5]), 130,
+                 11, {'mu_y': 1, 'sigma_y' : 1.6/np.sqrt(150), 'b' : 1,
+                      'd' : 1, 'gamma' : 1},
+                 'finite_effects_sigma_c_130')
 
 # %%
 
-fig, axs = generic_heatmaps(df_mu_c_M,
-                            'no_resources', 'mu_c', 
+df_sigma_c_M = generate_simulation_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                                      + 'finite_effects_sigma_c_130')
+
+# %%
+
+fig, axs = generic_heatmaps(df_sigma_c_M,
+                            'no_resources', 'sigma_c', 
                            'resource pool size, ' + r'$M$',
-                           'average total consumption  rate, ' + r'$\mu_c$',
+                           'std. dev. total consumption  rate, ' + r'$\sigma_c$',
                             ['Max. lyapunov exponent'], 'Purples',
                             '',
-                            (1, 1), (6.5, 4),
+                            (1, 1), (5.5, 4),
                             pivot_functions = {'Max. lyapunov exponent' : le_pivot},
                             specify_min_max={'Max. lyapunov exponent' : [0,1]})
 

@@ -10,404 +10,219 @@ import pandas as pd
 import seaborn as sns
 import os
 import sys
-from copy import copy
 from scipy.interpolate import BarycentricInterpolator
 from scipy.interpolate import make_splrep
 
 from matplotlib import pyplot as plt
 import matplotlib.patheffects as patheffects
-from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, HPacker, VPacker
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, VPacker
 from matplotlib.colors import LinearSegmentedColormap
 
-os.chdir('C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Chemically-mediated models/cavity_method_functions')
+os.chdir('C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling/cavity_solutions_vs_simulations')
+
+sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/cavity_method_functions')
 import self_consistency_equation_functions as sce
 
 sys.path.insert(0, "C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
-                    "Ecological-Dynamics/Chemically-mediated models/alternative_growth_consumption_coupling")
-from simulation_functions import distance_from_instability, \
-    distance_from_infeasibility, species_packing, \
-        create_df_and_delete_simulations_2, prop_chaotic, pickle_dump, \
-        generic_heatmaps
-        
+                    "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling")
+from simulation_functions import CRM_df, \
+    le_pivot, generic_heatmaps, pickle_dump
+    
 # %%
 
-def solve_sces_finite(parameters, solver_kwargs,
-                      x_init = None,
-                      solver = sce.solve_equations_least_squares,
-                      other_kwargs = {}):
+def solve_sces_yc_c(parameters, solved_quantities, bounds, x_init, solver_name,
+                    solver_kwargs = {'xtol' : 1e-13, 'ftol' : 1e-13},
+                    other_kwargs = {}, include_multistability = False):
     
-    solved_quantities = ['phi_N', 'N_mean', 'q_N', 'v_N',
-                         'phi_R', 'R_mean', 'q_R', 'chi_R']
-    
-    # variable bounds 
-    bounds = ([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10, 1e-10, 1e-10],
-              [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15])
-     
-    # initial values
-    if x_init:
+    if isinstance(x_init[0], list):
         
         xscales = list(np.power(10, np.floor(np.log10(np.abs(x_init)))))
         solver_kwargs = [dict(list(solver_kwargs.items()) + [('x_scale', xscale)]) 
                          for xscale in xscales]
-    
+        
     else:
-
-        x_init = np.array([0.5, 0.01, 0.01, -0.1, 0.7, 0.001, 0.01, 0.05])
+        
         solver_kwargs['x_scale'] = np.power(10, np.floor(np.log10(np.abs(x_init))))
     
-    sol = sce.solve_sces(parameters, 'self-limiting gc c M',
-                         solved_quantities = solved_quantities,
-                         bounds = bounds, x_init = x_init,
-                         solver = solver,
-                         solver_kwargs = solver_kwargs,
-                         other_kwargs = other_kwargs)
-       
-    sol[['dNde', 'dRde', 'ms_loss']] = \
-        pd.DataFrame(sol.apply(sce.solve_for_multistability, axis = 1,
-                               multistability_equation_func = 'self-limiting gc c M').to_list())
+    sol = sce.solve_self_consistency_equations(model = 'self-limiting, yc c',
+                                               parameters = parameters,
+                                               solved_quantities = solved_quantities,
+                                               bounds = bounds,
+                                               x_init = x_init,
+                                               solver_name = solver_name,
+                                               solver_kwargs = solver_kwargs,
+                                               other_kwargs = other_kwargs,
+                                               include_multistability = include_multistability)
+    
+    sol['rho'] = np.sqrt(1 / (1 + \
+                             ((sol['sigma_y']/sol['mu_y'])**2 * (1 + \
+                                                               ((sol['mu_c']**2)/(sol['M'] * sol['sigma_c']**2))))))
+    
+    sol['Species packing'] = sol['phi_N']/(sol['phi_R'] * sol['gamma'])
+    sol['Instability distance'] = sol['rho']**2 - sol['Species packing']
+    
+    sol['Infeasibility distance'] = sol['phi_R'] - sol['phi_N']/sol['gamma']
         
     return sol
 
 # %%
 
-def solve_phase_boundary(parameters, solved_quantities, bounds, x_init,
-                         solver_kwargs, 
-                         solver = sce.solve_equations_least_squares,
-                         other_kwargs = {}):
+def Global_Solve_SCEs(df_simulation):
     
-    xscales = list(np.power(10, np.floor(np.log10(np.abs(x_init)))))
-    solver_kwargs = [dict(list(solver_kwargs.items()) + [('x_scale', xscale)]) 
-                     for xscale in xscales]
+    extractable_parameters = df_simulation.groupby(['M',
+                                                    'mu_y'])[['mu_c',
+                                                              'sigma_c',
+                                                              'sigma_y']].mean().reset_index().to_dict('records')
     
-    sol = sce.solve_sces(parameters, 'self-limiting gc c M',
-                         solved_quantities = solved_quantities,
-                         bounds = bounds, x_init = x_init,
-                         solver = solver,
-                         solver_kwargs = solver_kwargs, 
-                         include_multistability = True,
-                         other_kwargs = other_kwargs)
+    # Solver arguments                                                         
+    parameters = sce.variable_fixed_parameters(extractable_parameters,
+                                               {'mu_b' : 1, 'sigma_b' : 0,
+                                                'mu_d' : 1, 'sigma_d' : 0,
+                                                'gamma' : 1})
     
-    sol['rho'] = (sol['mu_g'] * sol['sigma_c'])/np.sqrt((sol['mu_g'] * sol['sigma_c'])**2 + \
-                                                        (sol['mu_c'] * sol['sigma_g'])**2 + \
-                                                        (sol['sigma_g'] * sol['sigma_c'])**2) 
+    solved_quantities = ['phi_N', 'N_mean', 'q_N', 'v_N',
+                         'phi_R', 'R_mean', 'q_R', 'chi_R']
     
-    sol['no_species'] = sol['M']/sol['gamma'] 
-    sol.rename(columns = {'M' : 'no_resources'}, inplace = True)
-    sol['instability_condition'] = sol.apply(distance_from_instability, axis = 1)
-    sol.rename(columns = {'no_resources' : 'M'}, inplace = True)
-    sol.drop('no_species', axis = 1, inplace = True)
-       
-    sol[['dNde', 'dRde', 'ms_loss']] = \
-        pd.DataFrame(sol.apply(sce.solve_for_multistability, axis = 1,
-                               multistability_equation_func = 'self-limiting gc c M').to_list())
-        
-    return sol
+    bounds = ([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10,  1e-10, 1e-10],
+              [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15])
+    
+    x_init = np.array([0.5, 0.01, 0.01, -0.1, 0.7, 0.001, 0.01, 0.05])
+    
+    solved_sces = solve_sces_yc_c(parameters, solved_quantities, bounds, x_init,
+                                  'basin-hopping', other_kwargs = {'niter' : 200})
+    
+    solved_sces['M'] = np.int32(solved_sces['M'])
+    solved_sces['S'] = solved_sces['M']/solved_sces['gamma']
+    
+    # save data
+    
+    directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                          + "cavity_solutions/self_limiting_yc_c"
+    if not os.path.exists(directory): os.makedirs(directory) 
+    
+    pickle_dump(directory + "/M_vs_mu_y.pkl", solved_sces)
+    
+    return solved_sces
 
+# %%
+
+def Local_Solve_Phase_Boundary(solved_sces):
+    
+    solved_sces['dNde'] = np.log10(np.abs(solved_sces['dNde']))
+
+    max_dnde_by_M = solved_sces.groupby('M')['dNde'].max().to_numpy()
+    sorter = np.argsort(solved_sces['dNde'].to_numpy())
+    max_dNde_df = solved_sces.iloc[sorter[np.searchsorted(solved_sces['dNde'].to_numpy(),
+                                                           max_dnde_by_M,
+                                                           sorter=sorter)]]
+    
+    interpolator = BarycentricInterpolator(max_dNde_df['M'],
+                                           max_dNde_df[['phi_N', 'N_mean', 'q_N', 'v_N',
+                                                        'phi_R', 'R_mean', 'q_R', 'chi_R',
+                                                        'mu_c', 'sigma_c', 'mu_y', 'sigma_y',
+                                                        'mu_b', 'sigma_b', 'mu_d', 'sigma_d',
+                                                        'gamma']])
+    
+    interpolated_M = np.arange(np.min(max_dNde_df['M']),
+                               np.max(max_dNde_df['M']) + 5, 5)
+    
+    interpolated_matrix = interpolator(interpolated_M)
+    smoothed_interps = [make_splrep(interpolated_M, interpolated_y,
+                                    k = 2, s = 0.7)
+                        for interpolated_y in interpolated_matrix.T]
+    
+    interpolated_data = pd.DataFrame([smooth_y(interpolated_M)
+                                      for smooth_y in smoothed_interps],
+                                     index = ['phi_N', 'N_mean', 'q_N', 'v_N',
+                                              'phi_R', 'R_mean', 'q_R', 'chi_R',
+                                              'mu_c', 'sigma_c', 'mu_y', 'sigma_y',
+                                              'mu_b', 'sigma_b', 'mu_d', 'sigma_d',
+                                              'gamma']).T
+    
+    interpolated_data['M'] = interpolated_M
+     
+    parameters = interpolated_data[['M', 'mu_c', 'sigma_c', 'sigma_y',
+                                    'mu_b', 'sigma_b', 'mu_d', 'sigma_d',
+                                    'gamma']].to_dict('records')
+    
+    solved_quantities = ['phi_N', 'N_mean', 'q_N', 'v_N',
+                         'phi_R', 'R_mean', 'q_R', 'chi_R',
+                         'mu_y']
+    
+    bounds = ([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10, 1e-10, 1e-10, 0.1],
+              [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15, 2])
+    
+    x_inits = interpolated_data[['phi_N', 'N_mean', 'q_N', 'v_N',
+                                 'phi_R', 'R_mean', 'q_R', 'chi_R',
+                                 'mu_y']].to_dict('records')
+    x_inits = [list(x_init.values()) for x_init in x_inits]
+    
+    solved_phase = solve_sces_yc_c(parameters, solved_quantities, bounds, x_inits,
+                                   'least-squares', 
+                                   solver_kwargs = {'xtol' : 1e-15, 'ftol' : 1e-15},
+                                   include_multistability = True)
+     
+    return solved_phase
+      
 
 # %%
 
 def generate_simulation_df():
     
-    def community_properties_df(directory,
-                                parm_attributes = ['no_species', 'no_resources',
-                                                   'mu_c', 'sigma_c', 'mu_g',
-                                                   'sigma_g', 'm', 'K']):
-        
-        dfs = [create_df_and_delete_simulations_2(directory + "/", file, parm_attributes)
-               for file in os.listdir(directory)]
-                
-        return dfs
-
-    full_directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                        + 'finite_effects_fixed_mu_g_3'
+    directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                        + 'finite_effects_fixed_C_mu_y_final'
+                        
+    parameters = ['no_species', 'no_resources', 'mu_c', 'sigma_c', 'mu_y',
+                  'sigma_y', 'd_val', 'b_val']
+     
+    df = CRM_df(directory, parameters)
     
-    df = pd.concat(community_properties_df(full_directory), 
-                   axis = 0, ignore_index = True)
-    
-    df[['covariance', 'rho']] = pd.DataFrame(df.apply(covariance_correlation,
-                                                      axis = 1).to_list())
-
-    # calculate the stability metric (rho^2 - phi_N/(gamma * phi_R)) from the 
-    #   cavity solution
-    df['instability distance'] = df.apply(distance_from_instability, axis = 1)
-
-    # calcualte the infeasibily metric (phi_R - phi_N/gamma) from the cavity solution
-    df['infeasibility distance'] = df.apply(distance_from_infeasibility, axis = 1)
-
-    # calculate the species packing ratio, phi_N/(gamma * phi_R)
-    df['species packing 2'] = df.apply(species_packing, axis = 1)
-    
-    for var in ['rho', 'mu_c', 'mu_g', 'sigma_c', 'sigma_g']:
+    for var in ['rho', 'mu_c', 'mu_y', 'sigma_c', 'sigma_y', 'mu_c/M',
+                'sigma_c/root_M']:
         
         df[var] = np.round(df[var], 6)
     
     df['no_resources'] = np.int32(df['no_resources'])
     df.rename(columns = {'no_resources' : 'M', 'no_species' : 'S'}, inplace = True)
     
-    df['<C>'] = np.round(df['mu_c'] * df['M'], 2)
-
     return df
 
-def covariance_correlation(df):
-            
-    mu_c, mu_g, sigma_c, sigma_g = df['mu_c'], df['mu_g'], df['sigma_c'], df['sigma_g']
-
-    denominator = (mu_g * sigma_c)**2 + ((mu_c * sigma_g)**2) + (sigma_c * sigma_g)**2
-         
-    covariance = (mu_g * sigma_c**2)
-    correlation = (mu_g * sigma_c)/np.sqrt(denominator)
-        
-    return covariance, correlation
-    
 # %%
 
-def le_pivot(df, index = 'sigma_c', columns = 'mu_c', values = 'Max. lyapunov exponent'):
-    
-    return [pd.pivot_table(df, index = index, columns = columns,
-                          values = 'Max. lyapunov exponent', aggfunc = prop_chaotic)]
-
-def agg_pivot(df, values, index = 'sigma_c', columns = 'mu_c', aggfunc = 'mean'):
-    
-    return [pd.pivot_table(df, index = index, columns = columns,
-                           values = values, aggfunc = aggfunc)]
-
-# %%
-
-############################# global optimization, not reliant on initial conditions ######################
-
-def Global_Optimisation(df_simulation):
-    
-    extractable_parameters = df_simulation.groupby(['M',
-                                                    'mu_g'])[['mu_c',
-                                                              'sigma_c',
-                                                              'sigma_g']].mean().reset_index().to_dict('records')
-    
-    parameters = sce.variable_fixed_parameters(extractable_parameters, None,
-                                               {'mu_K' : 1, 'sigma_K' : 0,
-                                                'mu_m' : 1, 'sigma_m' : 0,
-                                                'gamma' : 1})
-       
-    solved_sces = solve_sces_finite(parameters,
-                                    solver_kwargs = {'xtol' : 1e-13,
-                                                     'ftol' : 1e-13},
-                                    solver = sce.solve_equations_basinhopping,
-                                    other_kwargs = {'niter' : 200})
-    
-    solved_sces['M'] = np.int32(solved_sces['M'])
-    solved_sces['<C>'] = np.round(solved_sces['mu_c'] * solved_sces['M'], 2)
-    
-    # calculate correlation, instability condition, infeasibility condition etc
-    
-    solved_sces.rename(columns = {'M' : 'no_resources'}, inplace = True)
-    solved_sces['no_species'] = solved_sces['no_resources']/solved_sces['gamma']
-    
-    solved_sces[['covariance', 'rho']] = pd.DataFrame(solved_sces.apply(covariance_correlation,
-                                                      axis = 1).to_list())
-    
-    # calculate the stability metric (rho^2 - phi_N/(gamma * phi_R)) from the 
-    #   cavity solution
-    solved_sces['instability distance'] = solved_sces.apply(distance_from_instability, axis = 1)
-    
-    # calcualte the infeasibily metric (phi_R - phi_N/gamma) from the cavity solution
-    solved_sces['infeasibility distance'] = solved_sces.apply(distance_from_infeasibility, axis = 1)
-    
-    # calculate the species packing ratio, phi_N/(gamma * phi_R)
-    solved_sces['species packing 2'] = solved_sces.apply(species_packing, axis = 1)
-    
-    solved_sces.rename(columns = {'no_resources' : 'M'}, inplace = True)
-    solved_sces.drop('no_species', axis = 1, inplace = True)
-    
-    # save data
-    
-    directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                          + "cavity_solutions/self_limiting_finite"
-    if not os.path.exists(directory): os.makedirs(directory) 
-    
-    pickle_dump(directory + "/M_vs_C_vs_mu_g.pkl", solved_sces)
-    
-    return solved_sces
-
-# %%
-
-################# Solving for the phase boundary ##############################
-
-'''
-
-def Phase_Boundary_Interpolated_M(solved_sces):
-    
-    solved_sces['dNde'] = np.log10(np.abs(solved_sces['dNde']))
-
-    max_dnde_by_M = solved_sces.groupby('M')['dNde'].max().to_numpy()
-    sorter = np.argsort(solved_sces['dNde'].to_numpy())
-    max_dNde_df = solved_sces.iloc[sorter[np.searchsorted(solved_sces['dNde'].to_numpy(),
-                                                           max_dnde_by_M,
-                                                           sorter=sorter)]]
-    
-    max_dNde_df['sigma_C'] =  np.round(max_dNde_df['sigma_c'] * np.sqrt(max_dNde_df['M']), 4)
-    
-    interpolator = BarycentricInterpolator(max_dNde_df['M'],
-                                           max_dNde_df[['phi_N', 'N_mean', 'q_N', 'v_N',
-                                                        'phi_R', 'R_mean', 'q_R', 'chi_R',
-                                                        '<C>', 'sigma_C', 'mu_g', 'sigma_g',
-                                                        'mu_K', 'sigma_K', 'mu_m', 'sigma_m',
-                                                        'gamma']])
-    
-    interpolated_M = np.arange(np.min(max_dNde_df['M']),
-                               np.max(max_dNde_df['M']) + 5, 5)
-    
-    interpolated_matrix = interpolator(interpolated_M)
-    smoothed_interps = [make_splrep(interpolated_M, interpolated_y,
-                                    k = 2, s = 0.7)
-                        for interpolated_y in interpolated_matrix.T]
-    
-    interpolated_data = pd.DataFrame([smooth_y(interpolated_M)
-                                      for smooth_y in smoothed_interps],
-                                     index = ['phi_N', 'N_mean', 'q_N', 'v_N',
-                                              'phi_R', 'R_mean', 'q_R', 'chi_R',
-                                              '<C>', 'sigma_C', 'mu_g', 'sigma_g',
-                                              'mu_K', 'sigma_K', 'mu_m', 'sigma_m',
-                                              'gamma']).T
-    
-    interpolated_data['M'] = interpolated_M
-    interpolated_data['mu_c'] = interpolated_data['<C>']/interpolated_data['M']
-    interpolated_data['sigma_c'] = interpolated_data['sigma_C']/np.sqrt(interpolated_data['M'])
-    
-    parameters = interpolated_data[['M', 'mu_c', 'sigma_c', 'sigma_g',
-                                    'mu_K', 'sigma_K', 'mu_m', 'sigma_m',
-                                    'gamma']].to_dict('records')
-    
-    x_inits = interpolated_data[['phi_N', 'N_mean', 'q_N', 'v_N',
-                                 'phi_R', 'R_mean', 'q_R', 'chi_R',
-                                 'mu_g']].to_dict('records')
-    x_inits = [list(x_init.values()) for x_init in x_inits]
-    
-    solved_phase = solve_phase_boundary(parameters,
-                                        solved_quantities = ['phi_N', 'N_mean',
-                                                            'q_N', 'v_N',
-                                                            'phi_R', 'R_mean',
-                                                            'q_R', 'chi_R',
-                                                            'mu_g'],
-                                        bounds = ([1e-10, 1e-10, 1e-10, -1e15,
-                                                   1e-10, 1e-10, 1e-10, 1e-10,
-                                                   0.05],
-                                                  [1, 1e15, 1e15, 1e-10,
-                                                   1, 1e15, 1e15, 1e15,
-                                                   3]),
-                                        x_init = x_inits,
-                                        solver_kwargs = {'xtol' : 1e-15, 'ftol' : 1e-15})
-    
-    solved_phase['<C>'] = np.round(solved_phase['mu_c'] * solved_phase['M'], 2)
-    
-    return solved_phase
-
-'''
-
-################################################################
-
-def Phase_Boundary_Interpolated_M(solved_sces):
-    
-    solved_sces['dNde'] = np.log10(np.abs(solved_sces['dNde']))
-
-    max_dnde_by_M = solved_sces.groupby('M')['dNde'].max().to_numpy()
-    sorter = np.argsort(solved_sces['dNde'].to_numpy())
-    max_dNde_df = solved_sces.iloc[sorter[np.searchsorted(solved_sces['dNde'].to_numpy(),
-                                                           max_dnde_by_M,
-                                                           sorter=sorter)]]
-    
-    max_dNde_df['sigma_C'] =  np.round(max_dNde_df['sigma_c'] * np.sqrt(max_dNde_df['M']), 4)
-    
-    interpolator = BarycentricInterpolator(max_dNde_df['M'],
-                                           max_dNde_df[['phi_N', 'N_mean', 'q_N', 'v_N',
-                                                        'phi_R', 'R_mean', 'q_R', 'chi_R',
-                                                        '<C>', 'sigma_C', 'mu_g', 'sigma_g',
-                                                        'mu_K', 'sigma_K', 'mu_m', 'sigma_m',
-                                                        'gamma']])
-    
-    interpolated_M = np.arange(np.min(max_dNde_df['M']),
-                               np.max(max_dNde_df['M']) + 5, 5)
-    
-    interpolated_matrix = interpolator(interpolated_M)
-    smoothed_interps = [make_splrep(interpolated_M, interpolated_y,
-                                    k = 2, s = 0.7)
-                        for interpolated_y in interpolated_matrix.T]
-    
-    interpolated_data = pd.DataFrame([smooth_y(interpolated_M)
-                                      for smooth_y in smoothed_interps],
-                                     index = ['phi_N', 'N_mean', 'q_N', 'v_N',
-                                              'phi_R', 'R_mean', 'q_R', 'chi_R',
-                                              '<C>', 'sigma_C', 'mu_g', 'sigma_g',
-                                              'mu_K', 'sigma_K', 'mu_m', 'sigma_m',
-                                              'gamma']).T
-    
-    interpolated_data['M'] = interpolated_M
-    interpolated_data['mu_c'] = interpolated_data['<C>']/interpolated_data['M']
-    interpolated_data['sigma_c'] = interpolated_data['sigma_C']/np.sqrt(interpolated_data['M'])
-    
-    parameters = interpolated_data[['M', 'mu_c', 'sigma_c', 'sigma_g',
-                                    'mu_K', 'sigma_K', 'mu_m', 'sigma_m',
-                                    'gamma']].to_dict('records')
-    
-    x_inits = interpolated_data[['phi_N', 'N_mean', 'q_N', 'v_N',
-                                 'phi_R', 'R_mean', 'q_R', 'chi_R',
-                                 'mu_g']].to_dict('records')
-    x_inits = [list(x_init.values()) for x_init in x_inits]
-    
-    solved_phase = solve_phase_boundary(parameters,
-                                        solved_quantities = ['phi_N', 'N_mean',
-                                                            'q_N', 'v_N',
-                                                            'phi_R', 'R_mean',
-                                                            'q_R', 'chi_R',
-                                                            'mu_g'],
-                                        bounds = ([1e-10, 1e-10, 1e-10, -1e15,
-                                                   1e-10, 1e-10, 1e-10, 1e-10,
-                                                   0.05],
-                                                  [1, 1e15, 1e15, 1e-10,
-                                                   1, 1e15, 1e15, 1e15,
-                                                   3]),
-                                        x_init = x_inits,
-                                        solver_kwargs = {'xtol' : 1e-15, 'ftol' : 1e-15})
-                                        #,
-#                                        solver = sce.solve_equations_basinhopping,
-#                                        other_kwargs = {'niter' : 200})
-    
-    solved_phase['<C>'] = np.round(solved_phase['mu_c'] * solved_phase['M'], 2)
-    
-    return solved_phase
-
-# %%
-
+# load in simulation data
 df_simulation = generate_simulation_df()
 
-globally_solved_sces = Global_Optimisation(df_simulation)
+# %%
 
-# (locally-solved) phase boundary
-solved_phase = Phase_Boundary_Interpolated_M(globally_solved_sces[globally_solved_sces['mu_g'] <= 2])
+# globally solved self consistency equations - slow
+globally_solved_sces = Global_Solve_SCEs(df_simulation)
 
 # %%
 
-df_simulation = generate_simulation_df()
+# load in simulation data and solved sces
 globally_solved_sces = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                                      + "cavity_solutions/self_limiting_finite/M_vs_C_vs_mu_g.pkl")
-
-solved_phase = Phase_Boundary_Interpolated_M(globally_solved_sces[globally_solved_sces['mu_g'] <= 2])
+                                      + "cavity_solutions/self_limiting_yc_c//M_vs_mu_y.pkl")
 
 # %%
 
-resource_pool_sizes = np.unique(df_simulation['M'])
+# (locally-solved) phase boundary - very quick
+solved_phase = Local_Solve_Phase_Boundary(globally_solved_sces)
+
+# %%
+
 
 ############# Phase diagram + analytically-derived boundary #####################
 
 def Stability_Plot():
     
-    #breakpoint()
+    resource_pool_sizes = np.unique(df_simulation['M'])
+    mu_ys = np.unique(df_simulation['mu_y'])
     
     ######################## Phase diagram ######################################
     
     # Simulation data
     
-    stability_sim_pivot = le_pivot(df_simulation[df_simulation['mu_g'] <= 2],
-                                   columns = 'M', index = 'mu_g')[0]
+    stability_sim_pivot = le_pivot(df_simulation, columns = 'M', index = 'mu_y')[0]
     
     sns.set_style('white')
     
@@ -425,19 +240,22 @@ def Stability_Plot():
                          square = True)
         
     subfig.axhline(0, 0, 1, color = 'black', linewidth = 2)
-    #subfig.axhline(stability_sim_pivot.shape[0], 0, 1,
-    #               color = 'black', linewidth = 2)
     subfig.axvline(0, 0, 1, color = 'black', linewidth = 2)
+    subfig.axhline(stability_sim_pivot.shape[0], 0, 1,
+                   color = 'black', linewidth = 2)
     subfig.axvline(stability_sim_pivot.shape[1], 0, 1,
                    color = 'black', linewidth = 2)
     
     axs["P"].set_xticks(np.arange(0.5, len(resource_pool_sizes) + 0.5, 2),
                         labels = resource_pool_sizes[::2], fontsize = 14)
+    axs["P"].set_yticks(np.arange(0.5, len(mu_ys) + 0.5, 2),
+                        labels = mu_ys[::2], fontsize = 14)
+    
 
-    axs["P"].set_yticks([0.5, 3.5, len(stability_sim_pivot.index) - 0.5],
-                        labels = [np.round(stability_sim_pivot.index[0], 3), 1.0,
-                                  np.round(stability_sim_pivot.index[-1], 3)],
-                                fontsize = 14)
+    #axs["P"].set_yticks([0.5, 3.5, len(stability_sim_pivot.index) - 0.5],
+    #                    labels = [np.round(stability_sim_pivot.index[0], 3), 1.0,
+    #                              np.round(stability_sim_pivot.index[-1], 3)],
+    #                            fontsize = 14)
     
     axs["P"].set_xlabel('resource pool size, ' + r'$M$', fontsize = 14,
                         weight = 'bold')
@@ -445,13 +263,6 @@ def Stability_Plot():
                         fontsize = 14, weight = 'bold')
     axs["P"].invert_yaxis()
     
-    #axs['P'].text(1.2, 2,
-    #              'Community stability is robust to changes in average ' + \
-    #              'resource use efficiency',
-    #              fontsize = 16, weight = 'bold',
-    #              verticalalignment = 'top', horizontalalignment = 'center',
-    #              transform=axs["P"].transAxes)
-        
     cbar = axs["P"].collections[0].colorbar
     cbar.set_label(label = 'Proportion of simulations with max. LE ' + r'$> 0.00$',
                    size = '14')
@@ -460,45 +271,33 @@ def Stability_Plot():
     # Analytically-derived phase boundary
     
     good_solves = solved_phase[solved_phase['loss'] <= -28]
-    good_solves = good_solves.iloc[np.where((good_solves['M'] >= 60) & 
-                                            (good_solves['M'] <= 245))]
-
-    smoother = make_splrep(good_solves['M'], good_solves['mu_g'], k = 2, s = 0.85)
-    smoothed_x = np.arange(60, 285, 5)
-
-    y_phase = smoother(smoothed_x) - np.min(globally_solved_sces['mu_g'])
-    diffs = np.unique(np.round(np.abs(np.diff(globally_solved_sces.iloc[np.where(globally_solved_sces['M'] == 100)]['mu_g'])), 1))
-    divider = diffs[diffs > 0]
-    y_vals = (y_phase/divider) + 0.5
-
-    x_vals = 0.9 + np.arange(0, len(smoothed_x)*0.2, 0.2)
-
-    sns.lineplot(x = x_vals, y = y_vals,
-                 ax = axs["P"], color = 'black', linewidth = 6,
-                 linestyle = '--')
+    smoother = make_splrep(good_solves['M'], good_solves['mu_y'], k = 2, s = 0.2)# 0.85)
     
-    conserve_mass_lim = np.where(stability_sim_pivot.index == 1)[0]
-    axs["P"].set_ylim([0, conserve_mass_lim + 1])
-    subfig.axhline(conserve_mass_lim + 1, 0, 1,
-                   color = 'black', linewidth = 2)
+    smoothed_x = np.arange(50, 280, 5)
     
+    y_phase = smoother(smoothed_x) - np.min(globally_solved_sces['mu_y'])
+    divider = np.unique(np.abs(np.diff(mu_ys)))
+    y_vals = (1/divider)*y_phase + 0.5
+    
+    x_vals = 0.5 + np.arange(0, len(smoothed_x)*0.2, 0.2)
+
+    sns.lineplot(x = x_vals, y = y_vals, ax = axs["P"], color = 'black',
+                 linewidth = 6, linestyle = '--')
+ 
     #################### Instability condition vs M #####################
     
-    # Example relathips with <C> = 128.57
+    # Example relathips with M = 175
+    
+    example_M = 175
 
-    #df_plot = globally_solved_sces.iloc[np.where((globally_solved_sces['M'] == 150) &
-    #                                             (globally_solved_sces['mu_g'] <= 2))]
-    df_plot = globally_solved_sces.iloc[np.where((globally_solved_sces['M'] == 175) &
-                                                 (globally_solved_sces['mu_g'] <= 1))]
-    dfl = pd.melt(df_plot[['mu_g', 'rho', 'species packing 2']], ['mu_g'])
+    df_plot = globally_solved_sces[globally_solved_sces['M'] == example_M]
+    dfl = pd.melt(df_plot[['mu_y', 'rho', 'Species packing']], ['mu_y'])
     dfl.loc[dfl['variable'] == 'rho', 'value'] = dfl.loc[dfl['variable'] == 'rho', 'value']**2
      
-    #axs["I_C"].vlines(smoother(150), np.min(dfl['value']), np.max(dfl['value']),
-    #                  color = 'gray', linestyle = '--', linewidth = 3, zorder = 0)
-    axs["I_C"].vlines(smoother(175), np.min(dfl['value']), np.max(dfl['value']),
+    axs["I_C"].vlines(smoother(example_M), np.min(dfl['value']), np.max(dfl['value']),
                       color = 'gray', linestyle = '--', linewidth = 3, zorder = 0)
 
-    subfig1 = sns.lineplot(dfl, x = 'mu_g', y = 'value', hue = 'variable',
+    subfig1 = sns.lineplot(dfl, x = 'mu_y', y = 'value', hue = 'variable',
                            ax = axs["I_C"], linewidth = 5, marker = 'o', markersize = 13,
                            palette = sns.color_palette(['#39568cff', '#1f968bff'], 2),
                            zorder = 100)
@@ -507,8 +306,7 @@ def Stability_Plot():
                           fontsize = 14, weight = 'bold')
     axs["I_C"].set_ylabel('')
     axs["I_C"].tick_params(axis='both', which='major', labelsize=14)
-    axs["I_C"].set_xticks(np.unique(df_plot['mu_g']),
-                          labels = np.unique(df_plot['mu_g']))
+    axs["I_C"].set_xticks(mu_ys, labels = mu_ys)
     
     # y-axis label
     ybox1 = TextArea('(correlation between\ngrowth and consumption)' + r'$^2$',
@@ -543,31 +341,35 @@ def Stability_Plot():
                     verticalalignment = 'top', horizontalalignment = 'center',
                     transform=axs["I_C"].transAxes)
         
-    axs["I_C"].text(0.65, 0.98, "Stable", color='white', fontsize=16,
+    axs["I_C"].text(0.7, 0.98, "Stable", color='white', fontsize=16,
                 path_effects=[patheffects.withStroke(linewidth=1.5, foreground='black')],
                 horizontalalignment='left', verticalalignment='top',
                 transform=axs["I_C"].transAxes)
     
-    axs["I_C"].text(0.275, 0.98,
-                   "Communities\nare close to the\nstability threshold",
+    axs["I_C"].text(0.3, 0.98,
+                   "Mildly unstable",
                    color='black', fontsize=14,
                    horizontalalignment='center', verticalalignment='top',
                    transform=axs["I_C"].transAxes)
     
-    axs["I_C"].annotate("Stability\nthreshold", xytext=(0.8, 0.3),
-                        #xy=(smoother(150) + 0.05, 0.3),
-                        xy=(smoother(175) + 0.025, 0.3),
+    axs["I_C"].annotate("Stability\nthreshold", xytext=(0.825, 0.3),
+                        xy=(smoother(example_M) + 0.01, 0.3),
                         color = 'grey', fontsize = 14, weight = 'bold',
                         va = 'center', multialignment = 'center',
                         arrowprops={'arrowstyle': '-|>', 'color' : 'gray', 'lw' : 2})
     
     ####################### Example population dynamics ######################
     
-    stable_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effects_fixed_mu_g_3/" + \
-                                         "CR_self_limiting_1751.0.pkl")
+    stable_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effects_fixed_C_mu_y_final/" + \
+                                         "simulations_175_1.0.pkl")
     
-    chaotic_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effects_fixed_mu_g_3/" + \
-                                         "CR_self_limiting_1750.5.pkl")
+    chaotic_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effects_fixed_C_mu_y_final/" + \
+                                         "simulations_175_0.5.pkl")
+    
+    population_stability = np.array([community.lyapunov_exponent
+                                     for community in chaotic_populations])
+    chaotic_stable = chaotic_populations[np.argmin(population_stability)]
+    chaotic_chaotic = chaotic_populations[np.argmax(population_stability)]
     
     def indices_and_cmaps(M):
         
@@ -592,10 +394,8 @@ def Stability_Plot():
     
     def plot_dynamics(ax, simulation, i_c_rp_M, title):
         
-        #breakpoint()
-            
         var_pos, colour_index, cmap = i_c_rp_M
-        data = simulation.ODE_sols['lineage 0']
+        data = simulation.ODE_sols[0]
         
         for i, v in zip(colour_index, var_pos):
         
@@ -611,15 +411,14 @@ def Stability_Plot():
         
         return ax
     
-    #i_c_rp = indices_and_cmaps(150)
-    i_c_rp = indices_and_cmaps(175)
+    i_c_rp = indices_and_cmaps(example_M)
     i_c_rp = [i_c for _ in range(3) for i_c in i_c_rp]
     
     for ax, simulation, i_c, title in \
         zip([axs['D1'], axs['D2'], axs['D3'], axs['D4'], axs['D5'], axs['D6']],
             [stable_populations[2], stable_populations[2],
-             chaotic_populations[2], chaotic_populations[2],
-             chaotic_populations[8], chaotic_populations[8]],
+             chaotic_stable, chaotic_stable, 
+             chaotic_chaotic, chaotic_chaotic],
             i_c_rp, ['species', 'resources', '', '', '', '']):
         
         plot_dynamics(ax, simulation, i_c, title)
@@ -638,36 +437,11 @@ def Stability_Plot():
                   verticalalignment = 'top', horizontalalignment = 'center',
                   transform=axs["I_C"].transAxes)
     
-    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_mu_g_M_sim_and_analyticalphase_intrplt.png",
+    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_mu_y_M_sim_and_analyticalphase.png",
                 bbox_inches='tight')
-    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_mu_g_M_sim_and_analyticalphase_intrplt.svg",
+    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_mu_y_M_sim_and_analyticalphase.svg",
                 bbox_inches='tight')
     
     plt.show()
     
 Stability_Plot()
-
-# %%
-
-resource_pool_sizes = np.unique(df_simulation['M'])
-
-fig, axs = generic_heatmaps(df_simulation[df_simulation['mu_g'] <= 2],
-                            'M', 'mu_g', 
-                           'resource pool size, ' + r'$M$',
-                           'average resource use efficiency, ' + r'$\mu_g$',
-                            ['infeasibility distance'], 'Blues',
-                            '',
-                            (1, 1), (6.5, 4),
-                            pivot_functions = {'infeasibility distance' : agg_pivot},
-                            specify_min_max = {'infeasibility distance' : 
-                                               [0, np.max(df_simulation['infeasibility distance'])]})
-
-axs.set_xticks(np.arange(0.5, len(resource_pool_sizes) + 0.5, 1),
-                          labels = resource_pool_sizes, fontsize = 14)
-
-cbar = axs.collections[0].colorbar
-cbar.set_label(label = r'$\phi_N$',
-               size = '14')
-cbar.ax.tick_params(labelsize = 12)
-
-plt.show()

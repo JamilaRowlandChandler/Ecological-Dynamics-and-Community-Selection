@@ -11,7 +11,7 @@ import os
 os.chdir("C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
          "Ecological-Dynamics/Chemically-mediated models/consumer_resource_modules_3")
 
-from new_models import Consumer_Resource_Model
+from models import Consumer_Resource_Model
 from community_level_properties import max_le
 
 # %%

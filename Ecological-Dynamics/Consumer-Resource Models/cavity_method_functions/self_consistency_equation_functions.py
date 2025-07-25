@@ -16,17 +16,13 @@ import pickle
 from tqdm import tqdm
 from inspect import getfullargspec
 
-from scipy.special import erfc
 from scipy.optimize import least_squares
-from scipy.optimize import differential_evolution
 from scipy.optimize import basinhopping
 
-import os
 os.chdir('C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Chemically-mediated models/cavity_method_functions')
 
 import self_limiting_rho_equations as slr
 import externally_supplied_equations as es
-import self_limiting_gc_c_equations as slgc
 import self_limiting_gc_c_finite_equations as slgcM
 import self_limiting_g_cg_equations as slcg
 
@@ -34,55 +30,238 @@ import self_limiting_g_cg_equations as slcg
 
 def parameter_combinations(parameter_ranges, n):
     
-    variable_parameter_vals = np.meshgrid(*[np.linspace(*val_range, n)
-                                            for val_range in parameter_ranges])
+    '''
+    
+    Generate all parameter combinations from 2 parameter sets
+    Parameters
+    ----------
+    parameter_ranges : list of lists or np.ndarray
+        This can either be the a list of parameter ranges, or a pre-specified
+        parameter list.
+    n : int
+        Number of parameter values per set, if parameters are being generated 
+        from a range.
+
+    Returns
+    -------
+    v_p_v_flattened : np.ndarray
+        2D array of all parameter combinations.
+
+    '''
+    
+    # Generate all parameter combinations from parameter ranges or 
+    #   pre-specified parameter sets
+    variable_parameter_vals = np.meshgrid(*[np.linspace(*val_range, n) if len(val_range) == 2
+                               else val_range
+                               for val_range in parameter_ranges])
      
+    # flatten meshgrid to get a 2D array of all parameter combinations
+    #   1 row = 1 parameter
     v_p_v_flattened = np.array([v_p_v.flatten() for v_p_v in variable_parameter_vals])
     
     return v_p_v_flattened
 
 # %%
 
-def variable_fixed_parameters(variable_parameters,  v_names,
-                              fixed_parameters):
+def variable_fixed_parameters(variable_parameters, fixed_parameters,
+                              v_names = None):
     
+    '''
+    
+    Generate list of dictionaries of parameters
+
+    Parameters
+    ----------
+    variable_parameters : list, dict or np.ndarray
+        Array of variable parameter combinations, usually generated using 
+        parameter_combinations().
+    fixed_parameters : dict
+        The fixed parameter values.
+    v_names : list of str, optional
+        Names of the variable parameters if they are a list or array.
+        The default is None.
+
+    Returns
+    -------
+    variable_list : list
+        List of dictionaries of parameter sets.
+
+    '''
     if isinstance(variable_parameters[0], (list, np.ndarray)) == True:
-    
+        
+        # convert array of variable parameters into a dictionary (with 
+        #   corresponding parameter names), then merge with the dict of fixed
+        #   parameters
         def variable_dict(v_p, v_p_names, fixed_parameters):
             
             return dict(zip(v_p_names, v_p)) | fixed_parameters 
         
+        # perform operation on all sets of variable parameters
         variable_list = np.apply_along_axis(variable_dict, 0, variable_parameters,
                                               v_p_names = v_names,
                                               fixed_parameters = fixed_parameters)
-        
+    
+    # if variable parameters are already in a list of dicts, merge each dict
+    #   with fixed parameters in a list comprehension
     elif isinstance(variable_parameters[0], dict) == True:
         
         variable_list = [v_p | fixed_parameters for v_p in variable_parameters]
                          
     return variable_list
+
+# %%
+
+def solve_self_consistency_equations(model,
+                                     parameters,
+                                     solved_quantities,
+                                     bounds,
+                                     x_init,
+                                     solver_name,
+                                     solver_kwargs = {'xtol' : 1e-13,
+                                                      'ftol' : 1e-13},
+                                     other_kwargs = {},
+                                     include_multistability = False):
+    '''
+    
+    Calls solve_sces for solving the system of self-consistency equations 
+    (phi_N, N_mean, q_N, v_N, phi_R, R_mean, q_R, and chi_R) and the solve for
+    the stability quations (dNde and dRde)
+
+    Parameters
+    ----------
+    model : str
+        Name of the system of self-consistency equations you want to solve, aka
+        the model you're solving.
+        The options are 'self-limiting, rho' (Blumenthal et al., 2024),
+        'self-limiting, yc c' (our model), 'self-limiting, g cg' (consumption
+         is coupled to growth), 'externally supplied' (chemostat-style system
+         with non-reciprocol growth and consumption rates)
+    parameters : list of dicts or dict
+        Values that are not being solved for. Usually the statistical properties 
+        of the distributions of model parameters (e.g. mean consumption rate)
+    solved_quantities : list of str
+        The names of the quantities being solved for. Usually the self-consistency
+        equations.
+    bounds : list containing 2 tuples, or list of lists of tuples 
+        The lower and upper bounds of the quantities being solved for.
+    x_init : list of np.ndarray, or list of lists
+        The initial values of the solved_quantities.
+    solver_name : str
+        The routine for solving the self consistency equations.
+        Options: 'basin-hopping' (global optimisation for least-squares),
+        'least-squares' (local optimisation). 
+    solver_kwargs : dict or list of dicts, optional
+        Options for the least-squares solver, which is called by both the 
+        'basin-hopping' and 'least squares' routine.
+        The default is {'xtol' : 1e-13, 'ftol' : 1e-13}  .                                                  
+    other_kwargs : dict or list of dicts, optional
+        Options for the basin-hopping solver. The default is {}.
+    include_multistability : Bool, optional
+        Whether or not the stability condition should be solved as well.
+        Set as True if you are solving for the phase boundary, or False otherwise.
+        The default is False.
+
+    Returns
+    -------
+    sol : pd.DataFrame
+        Dataframe of each parameter set + values of the solved self consistency
+        equations + multistability equations.
+
+    '''
+    
+    # Pick the solver
+    match solver_name:
+        
+        case 'basin-hopping':
+            
+            solver = solve_equations_basinhopping
+            
+        case 'least-squares':
+            
+            solver = solve_equations_least_squares
+    
+    # This routine solves the self consistency equations
+    sol = solve_sces(parameters, model,
+                     solved_quantities = solved_quantities,
+                     bounds = bounds,
+                     x_init = x_init,
+                     solver = solver,
+                     solver_kwargs = solver_kwargs,
+                     other_kwargs = other_kwargs,
+                     include_multistability = include_multistability)
+    
+    # This routine solves the multistability equations for each row of the df
+    #   (which contains each parameter set + solved self consistency equations)
+    sol[['dNde', 'dRde', 'ms_loss']] = \
+        pd.DataFrame(sol.apply(solve_for_multistability, axis = 1,
+                               multistability_equation_func = model).to_list())
+        
+    return sol
     
 # %%
 
-def solve_sces(parameters, equation_func, solved_quantities, bounds, x_init, solver,
+def solve_sces(parameters, model, solved_quantities, bounds, x_init, solver,
                solver_kwargs,
                other_kwargs = {}, include_multistability = False):
     
-    match equation_func:
+    '''
+    
+    Solve the self-consistency equations
+
+    Parameters
+    ----------
+    model : str
+        Name of the system of self-consistency equations you want to solve, aka
+        the model you're solving.
+        The options are 'self-limiting, rho' (Blumenthal et al., 2024),
+        'self-limiting, yc c' (our model), 'self-limiting, g cg' (consumption
+        is coupled to growth), 'externally supplied' (chemostat-style system
+        with non-reciprocol growth and consumption rates)
+    parameters : list of dicts or dict
+        Values that are not being solved for. Usually the statistical properties 
+        of the distributions of model parameters (e.g. mean consumption rate)
+    solved_quantities : list of str
+        The names of the quantities being solved for. Usually the self-consistency
+        equations.
+    bounds : list containing 2 tuples, or list of lists of tuples 
+        The lower and upper bounds of the quantities being solved for.
+    x_init : list of np.ndarray, or list of lists
+        The initial values of the solved_quantities.
+    solver : function name
+        The routine for solving the self consistency equations.
+        Options: 'basin-hopping' (global optimisation for least-squares),
+        'least-squares' (local optimisation). 
+    solver_kwargs : dict or list of dicts, optional
+        Options for the least-squares solver, which is called by both the 
+        'basin-hopping' and 'least squares' routine.
+        The default is {'xtol' : 1e-13, 'ftol' : 1e-13}  .                                                  
+    other_kwargs : dict or list of dicts, optional
+        Options for the basin-hopping solver. The default is {}.
+    include_multistability : Bool, optional
+        Whether or not the stability condition should be solved as well.
+        Set as True if you are solving for the phase boundary, or False otherwise.
+        The default is False.
+
+    Returns
+    -------
+    TYPE
+        DESCRIPTION.
+
+    '''
+    
+    # Identify which set of self consistency equations to solve for (model
+    #   dependent)
+    match model:
         
-        case 'self-limiting':
+        case 'self-limiting, rho':
             
             module = slr
             
-        case 'self-limiting gc c':
-            
-            module = slgc
-            
-        case 'self-limiting gc c M':
+        case 'self-limiting, yc c':
             
             module = slgcM
             
-        case 'self-limiting g cg inf':
+        case 'self-limiting, g cg':
             
             module = slcg
             
@@ -92,6 +271,7 @@ def solve_sces(parameters, equation_func, solved_quantities, bounds, x_init, sol
             
     function = module.self_consistency_equations
     
+    # Identify whether to include the stability condition
     if include_multistability == True:
         
         ms_function = module.instability_condition
@@ -99,138 +279,126 @@ def solve_sces(parameters, equation_func, solved_quantities, bounds, x_init, sol
     else:
         
         ms_function = None
-            
-    if isinstance(x_init[0], list):
-        
-        if isinstance(solver_kwargs, list):
-            
-            fitted_values_final_loss = np.array([solver(function, solved_quantities,
-                                                        bounds, x0, ls_kwargs,
-                                                        s_kwgs, other_kwargs,
-                                                        ms_function)
-                                                  for ls_kwargs, x0, s_kwgs 
-                                                  in tqdm(zip(parameters, x_init,
-                                                              solver_kwargs),
-                                                          position = 0,
-                                                          leave = True)])
-        
-        else:
-        
-            fitted_values_final_loss = np.array([solver(function, solved_quantities,
-                                                        bounds, x0, ls_kwargs,
-                                                        solver_kwargs, other_kwargs,
-                                                        ms_function)
-                                                  for ls_kwargs, x0 in tqdm(zip(parameters,
-                                                                                x_init),
-                                                                        position = 0,
-                                                                        leave = True)])
-        
-    else:
-        
-        fitted_values_final_loss = np.array([solver(function, solved_quantities,
-                                                    bounds, x_init, ls_kwargs,
-                                                    solver_kwargs, other_kwargs,
-                                                    ms_function)
-                                              for ls_kwargs in tqdm(parameters,
-                                                                    position = 0,
-                                                                    leave = True)])
     
+    def create_iterator(args_list):
+        
+        '''
+        
+        Creater iterator of solver routine arguments from the relevent args
+        of solve_sces(). (Sorry, it's a bit spaghetti-fied.)
+
+        Parameters
+        ----------
+        args_list : list
+            List of all solver arguments. MUST be in the same order as 
+            new_arg_names.
+
+        Returns
+        -------
+        iterable_kwargs : list
+            Iterator of solver routine arguments
+
+        '''
+        
+        # names of the corresponding solver routine args to the relevent 
+        #   solve_sce() args.
+        new_arg_names = ['solved_quantities', 'bounds', 'x_init', 'ls_kwargs',
+                         'solver_kwargs', 'other_kwargs']
+       
+        # if an arg is of these types, it'll need iterating through
+        collection_types_1 = (list, np.ndarray)
+        collection_types_2 = (list, tuple, dict, np.ndarray)
+        
+        # find the no. times/sets that need iterating through (n parameter sets
+        #   = n iters)
+        max_iter = len(args_list[3]) # no of parameter sets
+        
+        # Create dictionary where the key is the solver arg name, and the value
+        #   are the sets that need iterating through
+        
+        iterable_args_dict = {arg_name : (arg if any(arg) 
+                                          and isinstance(arg, collection_types_1)
+                                          and isinstance(arg[0], collection_types_2)
+                                          else [arg for _ in range(max_iter)])
+                              for arg_name, arg in zip(new_arg_names, args_list)}
+        
+        # Convert dict of sets in list of dicts, where each dict value is one 
+        #   arg val.
+        iterable_kwargs = pd.DataFrame(iterable_args_dict).to_dict('records')
+        
+        return iterable_kwargs
+    
+    # create iterator of arguments for the solving routine (e.g. if there are
+    #   different arguments for each parameter set)        
+    iterable_kwargs = create_iterator([solved_quantities, bounds, x_init,
+                                       parameters, solver_kwargs, other_kwargs])
+    
+    # Iterate through all parameter sets and solve the self-consistency equations
+    fitted_values_final_loss = np.array([solver(equation_func = function,
+                                                ms_function = ms_function,
+                                                **i_kwargs)
+                                          for i_kwargs in tqdm(iterable_kwargs,
+                                                               position = 0,
+                                                               leave = True)])
+    
+    # Convert array to dataframe. Each column solved quantity, each row is the 
+    # solves sces for a given parameter set
     fitted_values_df = pd.DataFrame(fitted_values_final_loss, columns = solved_quantities + ['loss'])
     
+    # combine parameter sets and solved equations into a single dataframe
     df = pd.concat([pd.DataFrame(parameters), fitted_values_df], axis = 1)
     
     return df
-
-
-# %%
-
-def phase_boundary(parameters, equation_func, solved_quantities, bounds, x_init,
-                   solver, solver_kwargs):
-    
-    match equation_func:
         
-        case 'self-limiting':
-        
-            function = slr.instability_condition
-            
-        case 'self-limiting gc c':
-            
-            function = slgc.instability_condition
-            
-        case 'self-limiting gc c inf':
-            
-            function = slgc.instability_condition
-            
-        case 'self-limiting gc c M':
-            
-            function = slgcM.instability_condition
-            
-        case 'self-limiting g cg inf':
-            
-            function = slcg.instability_condition
-            
-        case 'externally supplied':
-            
-            function = es.instability_condition
-            
-    if isinstance(x_init, list):
-        
-        fitted_values_final_loss = np.array([solver(function, solved_quantities,
-                                                    bounds, x0, ls_kwargs,
-                                                    **solver_kwargs)
-                                              for ls_kwargs, x0 in tqdm(zip(parameters,
-                                                                            x_init),
-                                                                    position = 0,
-                                                                    leave = True)])
-        
-    else:
-        
-        fitted_values_final_loss = np.array([solver(function, solved_quantities,
-                                                    bounds, x_init, ls_kwargs,
-                                                    **solver_kwargs)
-                                              for ls_kwargs in tqdm(parameters,
-                                                                    position = 0,
-                                                                    leave = True)])
-    
-    fitted_values_df = pd.DataFrame(fitted_values_final_loss, columns = solved_quantities + ['loss'])
-    
-    df = pd.concat([pd.DataFrame(parameters), fitted_values_df], axis = 1)
-    
-    return df
 
 # %%
 
 def solve_for_multistability(y, multistability_equation_func):
     
+    '''
+    
+    Solve the stability-related simultaneous equations (<(dNde)^2> and <(dRde)^2>,
+    not the stability condition)
+
+    Parameters
+    ----------
+    y : dict
+        Parameter set values + values for the solved self-consistency equations.
+    multistability_equation_func : str
+        Name of the system of self-consistency equations you want to solve, aka
+        the model you're solving.
+        The options are 'self-limiting, rho' (Blumenthal et al., 2024),
+        'self-limiting, yc c' (our model), 'self-limiting, g cg' (consumption
+        is coupled to growth), 'externally supplied' (chemostat-style system
+        with non-reciprocol growth and consumption rates)
+                                                      
+    Returns
+    -------
+    sol : np.ndarray
+        Solved values for <(dNde)^2> and <(dRde)^2>, and the loss function.
+
+    '''
+    
+    # bounds and initial values for <(dNde)^2> and <(dRde)^2>
     bounds = ([-1e15, -1e15], [1e15, 1e15])
     x_init = [0, 0]
     
+    # find the right set of equations for the model
     match multistability_equation_func:
         
-        case 'self-limiting':
+        case 'self-limiting, rho':
             
             fun = slr.multistability_equations
-            ls_kwarg_names = ['rho', 'gamma', 'sigma_c', 'sigma_g', 'phi_N', 'phi_R', 'v_N', 'chi_R']
-            
-        case 'self-limiting gc c':
-            
-            fun = slgc.multistability_equations
-            ls_kwarg_names = ['M', 'gamma', 'sigma_c', 'sigma_g', 'mu_c', 'mu_g',
-                              'phi_N', 'phi_R']
-            
-        case 'self-limiting gc c inf':
-            
-            fun = slgc.multistability_equations_inf
-            ls_kwarg_names = ['gamma', 'sigma_c', 'sigma_g', 'mu_c', 'mu_g',
-                              'phi_N', 'phi_R']
-            
-        case 'self-limiting gc c M':
-            
-            fun = slgcM.multistability_equations
-            ls_kwarg_names = ['M', 'gamma', 'sigma_c', 'sigma_g', 'mu_c', 'mu_g',
+            ls_kwarg_names = ['rho', 'gamma', 'sigma_c', 'sigma_g',
                               'phi_N', 'phi_R', 'v_N', 'chi_R']
             
-        case 'self-limiting g cg inf':
+        case 'self-limiting, yc c':
+            
+            fun = slgcM.multistability_equations
+            ls_kwarg_names = ['M', 'gamma', 'sigma_c', 'sigma_y', 'mu_c', 'mu_y',
+                              'phi_N', 'phi_R', 'v_N', 'chi_R']
+            
+        case 'self-limiting, g cg':
             
             fun = slcg.multistability_equations_inf
             ls_kwarg_names = ['gamma', 'sigma_c', 'sigma_g', 'mu_c', 'mu_g',
@@ -242,38 +410,108 @@ def solve_for_multistability(y, multistability_equation_func):
             ls_kwarg_names = ['rho', 'gamma', 'mu_c', 'sigma_c', 'sigma_g', 'mu_K',
                               'mu_D', 'sigma_D', 'phi_N', 'N_mean', 'q_N', 'v_N',
                               'chi_R']
-            
+    
+    # create kwargs (parameters) for the equation being solved for 
     ls_kwargs = {key : y[key] for key in ls_kwarg_names}
-     
+    
+    # Solve the multistability equations
     sol = solve_equations_least_squares(fun, ['dNde', 'dRde'],  bounds, x_init,
                                         ls_kwargs)
-    
-    #print('loss = ', sol[-1])
     
     return sol
 
 # %%
 
 def solve_equations_basinhopping(equation_func, solved_quantities, bounds, x_init,
-                                 ls_kwargs, solver_kwargs, bs_kwargs,
+                                 ls_kwargs, solver_kwargs, other_kwargs,
                                  ms_function = None, return_all = False):
+    
+    '''
+    
+     Globally solve the self-consistency equations using
+     scipy.optimize.basinhopping(). To locally solve the equations between each 
+     "hop", the routine calls scipy.optimize.least_squares().
+
+    Parameters
+    ----------
+    equation_func : function
+        The system of equations being solved for.
+    solved_quantities : list of str
+        The names of the quantities being solved for. Usually the self-consistency
+        equations.
+    bounds : list containing 2 tuples
+        The lower and upper bounds of the quantities being solved for.
+    x_init : list of np.ndarray, or list of lists
+        The initial values of the solved_quantities.
+    ls_kwargs : dict
+        Values that are not being solved for. Usually the statistical properties 
+        of the distributions of model parameters (e.g. mean consumption rate)
+    solver_kwargs : dict
+        Options for the least-squares solver, which is called by both the 
+        'basin-hopping' and 'least squares' routine.  .                                                  
+    other_kwargs : dict
+        Options for the basin-hopping solver.
+    ms_function : function, optional
+        The stability condition function. The default is None.
+    return_all : Bool, optional
+        Whether the all the attributes of the optimised results (True) or only 
+        the solved values and loss function should be returned (False). 
+        The default is False.
+
+    Returns
+    -------
+    returned_values : np.ndarray
+        The solved system of equations.
+
+    '''
     
     def minimise_ls(fun, x0, *args, **kwargs):
         
-        least_squares_kwargs = dict((arg_name, kwargs[arg_name]) 
-                                    for arg_name in getfullargspec(least_squares)[0]
-                                    if arg_name in kwargs.keys() \
-                                    and kwargs[arg_name] is not None
-                                    if isinstance(kwargs[arg_name],
-                                                  (list, dict, tuple, np.ndarray)) \
-                                    and any(kwargs[arg_name]))
-            
+        '''
+        
+        Customised routine using scipy.optimize.least_squares().
+        The least_squares output is customised to a form that can be used by
+        the basin-hopping routine (which is not possible in its native form).
+        It also rejects solves that blow up.
+
+        Parameters
+        ----------
+        fun : function
+            The function to be minimised.
+        x0 : TYPE
+            Initial values for the solved quantities.
+        *args : args
+            Solver arguments.
+        **kwargs : kwargs
+            Solver kwargs that can potentially be used by the solver.
+
+        Returns
+        -------
+        sol : OptimizeResult object + modifications
+            Local solve of the function.
+
+        '''
+        
+        # extract args for least_squares()
+        least_squares_kwargs = filter_ls_kwargs(kwargs)
+        
+        # Calculate the loss function for the initial values
+        
+        # Call the solver for 1 iteration (so no solve occurs)
         sol_init = least_squares(fun, x0, max_nfev = 1, **least_squares_kwargs)
-        sol_init.fun = np.sum(sol_init.fun**2)     
+        # Calculate the loss function from the residuals (standard form of 
+        #   least_squares() OptimizeResult.fun)
+        sol_init.fun = np.sum(sol_init.fun**2)    
+        
+        # Locally solve the equations 
         
         sol = least_squares(fun, x0, **least_squares_kwargs)
+        # Calculate loss + turn loss function into a form that basinhopping()
+        #   can use
         sol.fun = np.sum(sol.fun**2)
         
+        # Keep local solve if the loss function hasn't blown up, otherwise
+        #   reject and keep initial values
         if sol.fun > 1e-2:
             
             return sol_init
@@ -282,6 +520,7 @@ def solve_equations_basinhopping(equation_func, solved_quantities, bounds, x_ini
         
             return sol
 
+    # Construct the function to be minimised
     if ms_function:
         
         fun = lambda x : equation_func(**{key: val for key, val in 
@@ -293,10 +532,12 @@ def solve_equations_basinhopping(equation_func, solved_quantities, bounds, x_ini
 
         fun = lambda x : equation_func(**{key: val for key, val in 
                                           zip(solved_quantities, x)}, **ls_kwargs)
-        
+    
+    # Define the step constrainer and acceptance test for the basin-hopping routine 
     bounded_step = Take_Bounded_Step(bounds[0], bounds[1])
     accept_bounded_step = Accept_within_Bounds(bounds[1], bounds[0])
     
+    # Globally minimise the function
     fitted_values = basinhopping(fun, x0 = x_init,
                                  minimizer_kwargs = {"method" : minimise_ls,
                                                      "bounds" : bounds,
@@ -304,19 +545,29 @@ def solve_equations_basinhopping(equation_func, solved_quantities, bounds, x_ini
                                  take_step = bounded_step,
                                  accept_test = accept_bounded_step,
                                  callback = decent_solve,
-                                 **bs_kwargs)
+                                 **other_kwargs)
 
     if return_all is True:
         
+        # return all attributes of the OptimizeResult object
         returned_values = fitted_values
         
     else: 
         
-        returned_values = np.append(fitted_values.x, np.log10(np.sum(fitted_values.fun**2)))
+        # returned solved values + loss function
+        returned_values = np.append(fitted_values.x,
+                                    np.log10(np.sum(fitted_values.fun**2)))
     
     return returned_values
 
 class Take_Bounded_Step(object):
+    
+    '''
+    
+    Stop the basinhopping routine from taking too large a step (which could cause
+    the loss to blow up).
+    
+    '''
 
     def __init__(self, xmin, xmax, stepsize=0.1):
         
@@ -335,8 +586,15 @@ class Take_Bounded_Step(object):
         xnew = x + random_step
 
         return xnew
-    
+
 class Accept_within_Bounds:
+    
+    '''
+    
+    Only accept solved values within certain bounds (basin-hopping does not
+    have a native bounds routine).
+    
+    '''
     
     def __init__(self, xmax, xmin):
         
@@ -356,9 +614,58 @@ class Accept_within_Bounds:
     
 def decent_solve(x, f, accept):
     
+    '''
+    
+    Stop the basinhopping routine when the solve is good enough (aka when the
+    loss function is small enough)
+
+    Parameters
+    ----------
+    x : TYPE
+        DESCRIPTION.
+    f : float
+        Value of the loss function.
+    accept : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    bool
+        Whether the routine should stop.
+
+    '''
+    
+    # Stop solver if the loss function is less than 10^(-25)
     if np.log10(np.abs(f)) < -25:
         
         return True
+    
+def filter_ls_kwargs(kwargs):
+    
+    '''
+    
+    Extract the correct kwargs for the least_squares routine
+
+    Parameters
+    ----------
+    kwargs : dict
+        All kwargs.
+
+    Returns
+    -------
+    dict
+        Correct kwargs.
+
+    '''
+   
+    valid_args = getfullargspec(least_squares)[0]
+    collection_types = (list, dict, tuple, np.ndarray)
+    
+    return {arg_name : kwargs[arg_name]
+            for arg_name in valid_args
+            if arg_name in kwargs
+            and isinstance(kwargs[arg_name], collection_types)
+            and any(kwargs[arg_name])}
     
 # %%
 
@@ -367,19 +674,22 @@ def solve_equations_least_squares(equation_func, solved_quantities, bounds, x_in
                                   ms_function = None, return_all = False):
     
     '''
-
+    
+    Locally solve the self-consistency equations using 
+    scipy.optimize.least_squares. 
+    
     Parameters
     ----------
-    ls_kwargs : TYPE
-        DESCRIPTION.
+    See solve_equations_basinhopping().
 
     Returns
     -------
-    fitted_values : TYPE
-        DESCRIPTION.
+    returned_values : np.ndarray
+        The solved system of equations.
 
     '''
     
+    # Construct function to minimise
     if ms_function:
         
         fun = lambda x : equation_func(**{key: val for key, val in 
@@ -392,13 +702,11 @@ def solve_equations_least_squares(equation_func, solved_quantities, bounds, x_in
         fun = lambda x : equation_func(**{key: val for key, val in 
                                           zip(solved_quantities, x)}, **ls_kwargs)
     
+    # Solve equations
     fitted_values = least_squares(fun, x_init, bounds = bounds,
                                   max_nfev = 10000, **solver_kwargs)
-    #                              ftol = 1e-11, xtol = 1e-11, max_nfev = 10000)
     
-    
-    #print(fitted_values.message)
-    
+    # Return the whole object or just the solved values + loss function
     if return_all is True:
         
         returned_values = fitted_values
@@ -408,28 +716,3 @@ def solve_equations_least_squares(equation_func, solved_quantities, bounds, x_in
         returned_values = np.append(fitted_values.x, np.log10(np.sum(fitted_values.fun**2)))
     
     return returned_values
-
-# %%
-
-def pickle_dump(filename,data):
-    
-    '''
-    
-    Pickle data.
-
-    Parameters
-    ----------
-    filename : string
-        Pickle file name. Should end with .pkl
-    data : any
-        Data to pickle.
-
-    Returns
-    -------
-    None.
-
-    '''
-    
-    with open(filename, 'wb') as fp:
-        
-        pickle.dump(data, fp)
