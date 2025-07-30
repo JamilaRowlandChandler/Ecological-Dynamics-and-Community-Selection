@@ -14,6 +14,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 import os
 from tqdm import tqdm
+from scipy.stats import pearsonr
 
 sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/consumer_resource_modules_3')
 from models import Consumer_Resource_Model
@@ -195,6 +196,9 @@ def generate_simulation_df(directory):
     
     df['no_resources'] = np.int32(df['no_resources'])
     
+    df.rename(columns = {'no_resources' : 'M', 'no_species' : 'S'},
+              inplace = True)
+    
     return df
 
 # %%
@@ -223,7 +227,7 @@ def community_dynamics_df(communities, parameters):
     
     parameters[np.where(parameters == 'mu_y')[0]] = 'mu_g'
     parameters[np.where(parameters == 'sigma_y')[0]] = 'sigma_g'
-    
+
     properties_df = pd.DataFrame.from_dict({'phi_N' : [phi_N for community in communities for phi_N in community.species_survival_fraction],
                                             'N_mean' : [N_mean for community in communities for N_mean in community.species_avg_abundance],
                                             'q_N' : [q_N for community in communities for q_N in community.species_abundance_fluctuations],
@@ -232,7 +236,10 @@ def community_dynamics_df(communities, parameters):
                                             'q_R' : [q_R for community in communities for q_R in community.resource_abundance_fluctuations],
                                             'Max. lyapunov exponent' : np.concatenate([np.repeat(community.lyapunov_exponent, len(community.ODE_sols)) 
                                                                                        for community in communities]),
-                                            'Divergence measure' : [simulation.t[-1] for community in communities for simulation in community.ODE_sols]})
+                                            'Divergence measure' : [simulation.t[-1] for community in communities for simulation in community.ODE_sols],
+                                            'rho_est' : np.concatenate([np.repeat(pearsonr(community.consumption.T.flatten(),
+                                                                            community.growth.flatten())[0], len(community.ODE_sols)) 
+                                                                        for community in communities])})
                             
     parameter_df = pd.DataFrame.from_dict({parameter : \
                                            np.concatenate([np.repeat(getattr(community, parameter),

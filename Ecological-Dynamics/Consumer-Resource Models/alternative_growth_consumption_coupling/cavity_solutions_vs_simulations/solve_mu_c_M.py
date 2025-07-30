@@ -165,10 +165,6 @@ def Local_Solve_Phase_Boundary(solved_sces, solved_quantity = 'mu_c',
     smoothed_interps = [np.poly1d(np.polyfit(interpolated_M, interpolated_y, 2))
                         for interpolated_y in interpolated_matrix.T]
     
-    #smoothed_interps = [make_splrep(interpolated_M, interpolated_y,
-    #                                k = 2, s = 0.7)
-    #                    for interpolated_y in interpolated_matrix.T]
-    
     interpolated_data = pd.DataFrame([np.round(smooth_y(interpolated_M), 7)
                                       for smooth_y in smoothed_interps],
                                      index = parm_names + solved_quantities).T

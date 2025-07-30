@@ -11,10 +11,8 @@ import seaborn as sns
 import os
 import sys
 from scipy.interpolate import BarycentricInterpolator
-from scipy.interpolate import make_splrep
 
 from matplotlib import pyplot as plt
-import matplotlib.patheffects as patheffects
 from matplotlib.offsetbox import AnchoredOffsetbox, TextArea, VPacker
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -25,8 +23,7 @@ import self_consistency_equation_functions as sce
 
 sys.path.insert(0, "C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
                     "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling")
-from simulation_functions import CRM_df, \
-    le_pivot, generic_heatmaps, pickle_dump
+from simulation_functions import generate_simulation_df, le_pivot, pickle_dump
     
 # %%
 
@@ -208,34 +205,12 @@ def Local_Solve_Phase_Boundary(solved_sces):
                                    include_multistability = True)
      
     return solved_phase
-      
-
-# %%
-
-def generate_simulation_df():
-    
-    directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                        + 'finite_effects_fixed_C_mu_y_final_2'
-                        
-    parameters = ['no_species', 'no_resources', 'mu_c', 'sigma_c', 'mu_y',
-                  'sigma_y', 'd_val', 'b_val']
      
-    df = CRM_df(directory, parameters)
-    
-    for var in ['rho', 'mu_c', 'mu_y', 'sigma_c', 'sigma_y', 'mu_c/M',
-                'sigma_c/root_M']:
-        
-        df[var] = np.round(df[var], 6)
-    
-    df['no_resources'] = np.int32(df['no_resources'])
-    df.rename(columns = {'no_resources' : 'M', 'no_species' : 'S'}, inplace = True)
-    
-    return df
-
 # %%
 
 # load in simulation data
-df_simulation = generate_simulation_df()
+df_simulation = generate_simulation_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                                       + 'finite_effects_fixed_C_mu_y_final_2')
 
 # %%
 
@@ -252,15 +227,6 @@ globally_solved_sces = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files a
 
 # (locally-solved) phase boundary - very quick
 solved_phase = Local_Solve_Phase_Boundary(globally_solved_sces)
-
-# %%
-
-smoothed = np.poly1d(np.polyfit(solved_phase.loc[ : , 'M'],
-                                solved_phase.loc[ : , 'mu_y'], 2))
-
-plt.plot(solved_phase.loc[ : , 'M'],
-         smoothed(solved_phase.loc[ : , 'M']))
-plt.show()
 
 # %%
 
@@ -323,7 +289,7 @@ def Stability_Plot():
     
     smoothed_x = np.arange(50, 270, 1)
     
-    y_phase = smoother(smoothed_x) - np.min(globally_solved_sces['mu_y'])
+    y_phase = smoother(smoothed_x) - np.min(mu_ys)
     divider = np.unique(np.abs(np.diff(mu_ys)))
     y_vals = (1/divider)*y_phase + 0.5
     
@@ -382,9 +348,8 @@ def Stability_Plot():
     axs["I_C"].legend_.remove()
     
     axs['I_C'].text(0.5, 1.2,
-                    'Increasing the yield conversion factor simultaneously' + \
-                    '\nincreases the correlation and species packing\n' + \
-                    'ratio. weakening destabilising effects',
+                    'Decreasing ' + r'$\mu_y$' ' decreases the correlation and species\n' + \
+                    'packing ratio, weakening destabilising effects',
                     fontsize = 16, weight = 'bold',
                     verticalalignment = 'top', horizontalalignment = 'center',
                     transform=axs["I_C"].transAxes)
@@ -484,7 +449,7 @@ def Stability_Plot():
     
     axs['D1'].text(-1.75, 1.2,
                   'Community stability is robust to changes in the average ' + \
-                  'yield conversion factor',
+                  'yield conversion factor ' + r'$(\mu_y)$',
                   fontsize = 16, weight = 'bold',
                   verticalalignment = 'top', horizontalalignment = 'center',
                   transform=axs["I_C"].transAxes)
