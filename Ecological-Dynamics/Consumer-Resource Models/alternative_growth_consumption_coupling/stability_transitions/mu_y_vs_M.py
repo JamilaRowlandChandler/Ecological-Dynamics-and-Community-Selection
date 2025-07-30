@@ -17,7 +17,7 @@ os.chdir("C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-C
     
 sys.path.insert(0, "C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
                     "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling")
-from simulation_functions import CRM_across_parameter_space, CRM_df, \
+from simulation_functions import CRM_across_parameter_space, generate_simulation_df, \
     le_pivot, generic_heatmaps
 
 sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/cavity_method_functions')
@@ -60,24 +60,6 @@ def generate_parameters_M_mu_y(M_range, mu_y_range, mu_C, sigma_C, n,
         parms['M'] = np.int32(parms['M'])
     
     return parameters
-
-# %%
-
-def generate_df(directory):
-    
-    parameters = ['no_species', 'no_resources', 'mu_c', 'sigma_c', 'mu_y',
-                  'sigma_y', 'd_val', 'b_val'] 
-    
-    df = CRM_df(directory, parameters)
-    
-    for var in ['rho', 'mu_c', 'mu_y', 'sigma_c', 'sigma_y', 'mu_c/M',
-                'sigma_c/root_M']:
-        
-        df[var] = np.round(df[var], 6)
-    
-    df['no_resources'] = np.int32(df['no_resources'])
-    
-    return df
     
 # %%
 
@@ -85,14 +67,13 @@ resource_pool_sizes = np.arange(50, 275, 25)
 
 # %%
 
-M_effect_mu_y(resource_pool_sizes, np.array([0.25, 1]), 130, 1.6, 7, # mu_c = 128.57
+M_effect_mu_y(resource_pool_sizes, np.array([0.25, 1]), 130, 1.6, 7,
               {'sigma_y' : 1.6/np.sqrt(150), 'b' : 1, 'd' : 1, 'gamma' : 1})
 
 # %%
 
-df_mu_y_M = generate_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                         #+ 'finite_effects_fixed_C_mu_y_final')
-                         + 'finite_effects_fixed_C_mu_y_final_2')
+df_mu_y_M = generate_simulation_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                                   + 'finite_effects_fixed_C_mu_y_final_2')
     
 # %%
 

@@ -24,7 +24,7 @@ os.chdir("C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-C
     
 sys.path.insert(0, "C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
                     "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling")
-from simulation_functions import CRM_across_parameter_space, CRM_df, \
+from simulation_functions import CRM_across_parameter_space, generate_simulation_df, \
     le_pivot, generic_heatmaps
 
 sys.path.insert(0, 'C:/Users/jamil/Documents/PhD/Github Projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/cavity_method_functions')
@@ -68,24 +68,6 @@ def generate_parameters_M_C(M_range, mu_C_range, sigma_C, b, n,
         parms['M'] = np.int32(parms['M'])
     
     return parameters
-
-# %%
-
-def generate_df(directory):
-    
-    parameters = ['no_species', 'no_resources', 'mu_c', 'sigma_c', 'mu_y',
-                  'sigma_y', 'd_val', 'b_val'] 
-    
-    df = CRM_df(directory, parameters)
-    
-    for var in ['rho', 'mu_c', 'mu_y', 'sigma_c', 'sigma_y', 'mu_c/M',
-                'sigma_c/root_M']:
-        
-        df[var] = np.round(df[var], 6)
-    
-    df['no_resources'] = np.int32(df['no_resources'])
-    
-    return df
     
 # %%
 
@@ -99,8 +81,8 @@ M_effect_fixed_C_fixed_supply(resource_pool_sizes, np.array([100, 250]), 1.6, 15
 
 # %%
 
-df_mu_c_b_M = generate_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                         + 'finite_effects_fixed_C_fixed_supply_final')
+df_mu_c_b_M = generate_simulation_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                                     + 'finite_effects_fixed_C_fixed_supply_final')
 
 # %%
 
