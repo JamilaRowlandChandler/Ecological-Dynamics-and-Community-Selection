@@ -13,7 +13,6 @@ Created on Fri Sep 20 15:29:00 2024
 # %%
 
 import numpy as np
-from scipy.integrate import solve_ivp
 
 from initial_abundances import InitialConditionsInterface
 
@@ -24,6 +23,37 @@ class DifferentialEquationsInterface(InitialConditionsInterface):
     def simulate_community(self, t_end, no_init_cond, init_cond_func='Mallmin',
                            assign = True, **kwargs):
         
+        '''
+        
+        Call methods that generate initial abundances and run simulations. 
+
+        Parameters
+        ----------
+        t_end : float
+            Simulation end time.
+        no_init_cond : int
+            number of sets of initial abundances to simulate from (no. repeats).
+        init_cond_func : str, optional
+            What function is used to generate the initial conditions. 
+            The options: 
+                "Mallmin" - Uniform(dispersal, 2/M)
+                "user supplied" - supply your own intial abundances
+            The default is 'Mallmin'.
+        assign : Bool, optional
+            Whether or not to assign simulations as object attributes. True for
+            simulations, false for calculating lyapunov exponents. 
+            The default is True.
+        **kwargs : TYPE
+            Optional arguments for initial condition function, depending on 
+            the function called.
+
+        Returns
+        -------
+        ODE_sols : list
+            list of simulations from n = no_init_cond initial abundances.
+
+        '''
+        
         self.t_end = t_end
         
         # generate initial species and resource abundances
@@ -31,10 +61,11 @@ class DifferentialEquationsInterface(InitialConditionsInterface):
             self.generate_initial_conditions(no_init_cond, init_cond_func, **kwargs)
             
         # simulate community dynamics for each set of initial conditions
+        # - this is called from the object-specific methods
         ODE_sols = [self.simulation(t_end, initial_abundances[:, i]) 
                     for i in range(initial_abundances.shape[1])]
         
-        # should simulations be assigned to a class attribute
+        # should simulations be assigned to a class attribute?
         if assign is True:
             
             self.ODE_sols = ODE_sols
@@ -45,17 +76,17 @@ class DifferentialEquationsInterface(InitialConditionsInterface):
     
 
 def unbounded_growth(t, var, *args):
+    
     '''
-    
-    THIS IS IMPORTANT FOR YOU
-    
-    The function identifies whether unbounded growth (to infinity) is occuring.
-    If there is unbounded growth, the function stops the ODE solver early.
+
+    This function identifies whether unbounded growth (to infinity) is occuring 
+    during simulations. If growth is unbounded, the function stops the ODE solver
+    early.
 
     Parameters
     ----------
     t : float
-        time.
+        time point.
     var : np.array() of floats
         Species and resource dynamics at timte t.
     *args : TYPE

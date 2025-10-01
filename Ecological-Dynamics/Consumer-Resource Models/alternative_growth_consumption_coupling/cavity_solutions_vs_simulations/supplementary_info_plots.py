@@ -264,6 +264,7 @@ def stability_infeasibility_transitions_other_parms():
                 bbox_inches='tight')
         
 stability_infeasibility_transitions_other_parms()
+
 # %%
 
 
@@ -279,7 +280,7 @@ stability_infeasibility_transitions_other_parms()
 
 
 
-
+                                                                                
 
 
 

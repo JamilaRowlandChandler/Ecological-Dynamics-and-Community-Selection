@@ -21,16 +21,35 @@ class ParametersInterface:
         
         Parameters
         ----------
-        method : TYPE
-            DESCRIPTION.
-        mu_c : TYPE
-            DESCRIPTION.
-        mu_g : TYPE
-            DESCRIPTION.
-        sigma_c : TYPE
-            DESCRIPTION.
-        sigma_g : TYPE
-            DESCRIPTION.
+        method : str
+            Type of method used to generate growth and consumption rates.
+            Options are:
+                'coupled by rho' - growth and consumption linear functions,
+                coupled by a parameter rho that controls their reciprocity
+                See Blumenthal et al., 2024 for details.
+                
+                'growth function of consumption' - growth and consumtion are coupled
+                by a yield conversion factor. consumption rates = c, growth = g*c,
+                therefore mu_c and sigma_c are the mean and std. dev. in consumption,
+                and mu_g and sigma_g are the mean and std. dev. in yield conversion.
+                
+                'consumption function of growth' - growth and consumtion are coupled
+                by a yield conversion factor. consumption rates = gc, growth = g,
+                therefore mu_c and sigma_c are the mean and std. dev. in yield conversion,
+                and mu_g and sigma_g are the mean and std. dev. in growth.
+                
+                'user supplied' - supply your own growth and consumption rates.
+                If used, mu_c, sigma_c, mu_g sigma_g can be set to some arbitary value or None,
+                or if you know the means and std. devs. of your rates, you can
+                supply them instead.
+        mu_c : float
+            mean of parameter that determines consumption rates.
+        mu_g : float
+            mean of parameter that determines growth rates.
+        sigma_c : float
+            standard deviation of parameter that determines consumption rates.
+        sigma_g : float
+            standard deviation of parameter that determines growth rates.
         **kwargs : TYPE
             DESCRIPTION.
 
@@ -40,11 +59,13 @@ class ParametersInterface:
 
         '''
         
+        # assign statistical properties of growth and consumption rates to object
         for name, statistic in zip(['mu_c', 'mu_g', 'sigma_c', 'sigma_g'],
                                    [mu_c, mu_g, sigma_c, sigma_g]): 
             
             setattr(self, name, statistic)
         
+        # generate random variables for growth and consumption rates
         X_c, X_g = np.random.randn(self.no_resources, self.no_species),\
                     np.random.randn(self.no_species, self.no_resources)
         
@@ -84,8 +105,7 @@ class ParametersInterface:
                 self.growth = self.mu_g + self.sigma_g*X_g
                 self.rue = self.mu_c + self.sigma_c*X_c
                 
-                if conserve_mass == True:
-                    
+                if conserve_mass == True: # set yield conversions > 1 to 1 to maintain conservation of mass
                     self.rue[self.rue > 1] = 1
                     
                 self.consumption = self.rue * self.growth.T
@@ -116,6 +136,30 @@ class ParametersInterface:
     def other_parameter_methods(self, parameter_method, parameter_args,
                                   p_label, dims):
         
+        '''
+        
+        Generate other model parameters (e.g. consumer death rates)
+        
+
+        Parameters
+        ----------
+        parameter_method : str
+            Options are:
+                'normal' - parameters are normally distributed
+                'constant' - parameters are fixed
+        parameter_args : dict
+            parameter method arguments.
+        p_label : str
+            name of attribute to assign parameter values to.
+        dims : tuple
+            Dimensions of the parameter set (e.g., array, matrix).
+
+        Returns
+        -------
+        None.
+
+        '''
+        
         match parameter_method:
             
             case 'normal':
@@ -124,11 +168,14 @@ class ParametersInterface:
                 
                     mu, sigma = parameter_args['mu'], parameter_args['sigma']
                     
+                    # assign statistical properties to object
                     setattr(self, 'mu_' + p_label, mu)
                     setattr(self, 'sigma_' + p_label, sigma)
                     
+                    # generate parameters
                     parameters = self.__normal_parameters(mu, sigma, dims)
                     
+                    # assign parameters to class attributes
                     setattr(self, p_label, parameters)
                     
                 except KeyError as e:
@@ -139,7 +186,10 @@ class ParametersInterface:
                 
                 try:
                     
+                    # assign fixed value of parameter to object
                     setattr(self, p_label + '_val', parameter_args[p_label])
+                    
+                    # generate parameters and assign to object
                     setattr(self, p_label, parameter_args[p_label] * np.ones(dims))
                 
                 except KeyError as e:
@@ -148,5 +198,25 @@ class ParametersInterface:
         
     def __normal_parameters(self, mu, sigma, dims):
         
+        '''
+        
+        Generate normally distributed parameters
+
+        Parameters
+        ----------
+        mu : float
+            mean.
+        sigma : float
+            standard deviation.
+        dims : tuple
+            dimensions of the parameter set (e.g. could be wanting to generate 
+                                             an array of matrix of parameters).
+
+        Returns
+        -------
+        np.ndarray
+            normally distributed parameters.
+
+        '''
         return mu + sigma*np.random.randn(*dims)
     

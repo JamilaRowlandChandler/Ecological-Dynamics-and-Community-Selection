@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul 22 09:43:55 2025
+Created on Thu Sep  4 10:47:41 2025
 
 @author: jamil
 """
@@ -14,9 +14,9 @@ from copy import copy
 from scipy.optimize import curve_fit
 
 from matplotlib import pyplot as plt
+import matplotlib.patheffects as patheffects
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
-import matplotlib.patheffects as patheffects
 
 os.chdir('C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling/cavity_solutions_vs_simulations')
 
@@ -66,84 +66,8 @@ def solve_sces_yc_c(parameters, solved_quantities, bounds, x_init, solver_name,
 
 # %%
 
-def Global_Solve_SCEs(df_simulation, filename):
-    
-    def clean_bad_solves(sces, other_kwargs = {'niter' : 500}):
-        
-        bad_solves = sces.loc[sces['loss'] > -30, :]
-        
-        if bad_solves.empty is True:
-            
-            return sces
-        
-        else:
-        
-            parameters = bad_solves[['M', 'mu_c', 'mu_y','sigma_c', 
-                                     'sigma_y', 'mu_b', 'sigma_b',
-                                     'mu_d', 'sigma_d', 'gamma']].to_dict('records')
-            
-            solved_quantities = ['phi_N', 'N_mean', 'q_N', 'v_N',
-                                 'phi_R', 'R_mean', 'q_R', 'chi_R']
-            
-            bounds = ([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10, 1e-10, 1e-10],
-                      [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15])
-            
-            x_init = np.array([0.5, 0.01, 0.01, -0.1, 0.7, 0.001, 0.01, 0.05])
-            
-            cleaned_sces = solve_sces_yc_c(parameters, solved_quantities, bounds, x_init,
-                                          'basin-hopping', other_kwargs = other_kwargs)
-            cleaned_sces['S'] = cleaned_sces['M']/cleaned_sces['gamma']
-            
-            final_sces = copy(sces)
-            bad_solve_idx = final_sces.loc[final_sces['loss'] > -30, :].index.tolist()
-            cleaned_sces.rename(index={old_idx : new_idx for old_idx, new_idx in
-                                       zip(cleaned_sces.index.tolist(), bad_solve_idx)},
-                                inplace = True)
-            final_sces.update(cleaned_sces)
-            
-            return final_sces
-    
-    extractable_parameters = df_simulation.groupby(['M',
-                                                    'sigma_c'])[['mu_c', 'mu_y',
-                                                                 'sigma_y']].mean().reset_index().to_dict('records')
-    
-    # Solver arguments                                                         
-    parameters = sce.variable_fixed_parameters(extractable_parameters,
-                                               {'mu_b' : 1, 'sigma_b' : 0,
-                                                'mu_d' : 1, 'sigma_d' : 0,
-                                                'gamma' : 1})
-    
-    solved_quantities = ['phi_N', 'N_mean', 'q_N', 'v_N',
-                         'phi_R', 'R_mean', 'q_R', 'chi_R']
-    
-    bounds = ([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10,  1e-10, 1e-10],
-              [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15])
-    
-    x_init = np.array([0.5, 0.01, 0.01, -0.1, 0.7, 0.001, 0.01, 0.05])
-    
-    solved_sces = solve_sces_yc_c(parameters, solved_quantities, bounds, x_init,
-                                  'basin-hopping', other_kwargs = {'niter' : 200})
-    
-    solved_sces['S'] = solved_sces['M']/solved_sces['gamma']
-    
-    final_sces = clean_bad_solves(solved_sces)
-    
-    solved_sces['M'] = np.int32(solved_sces['M'])
-
-    # save data
-    
-    directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                          + "cavity_solutions/self_limiting_yc_c"
-    if not os.path.exists(directory): os.makedirs(directory) 
-    
-    pickle_dump(directory + filename, final_sces)
-    
-    return solved_sces
-
-# %%
-
-def Local_Solve_Phase_Boundary(solved_sces, solved_quantity = 'sigma_c',
-                               quantity_bounds = [0.1, 10]):
+def Local_Solve_Phase_Boundary(solved_sces, solved_quantity = 'sigma_y',
+                               quantity_bounds = [0.001, 0.5]):
     
     parm_names = ['mu_c', 'sigma_c', 'mu_y', 'sigma_y',
                   'mu_b', 'sigma_b', 'mu_d', 'sigma_d',
@@ -204,23 +128,13 @@ def Local_Solve_Phase_Boundary(solved_sces, solved_quantity = 'sigma_c',
       
 # %%
 
-# load in simulation data
 df_simulation = generate_simulation_df("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                                       + 'finite_effects_sigma_c_final')
-
-# %%
-
-# globally solved self consistency equations - slow
-globally_solved_sces = Global_Solve_SCEs(df_simulation,
-                                         "/M_vs_sigma_c_for_sim.pkl")
-
-# %%
-
-# load in simulation data and solved sces
+                                      + 'finite_effect_sigma_y_final')
+    
 globally_solved_sces = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
-                                      + "cavity_solutions/self_limiting_yc_c/M_vs_sigma_c_for_sim.pkl")
-
-# (locally-solved) phase boundary - very quick
+                                      + "cavity_solutions/self_limiting_yc_c/" + \
+                                          "M_sigma_y_2.pkl")    
+    
 solved_phase = Local_Solve_Phase_Boundary(globally_solved_sces)
 
 # %%
@@ -230,14 +144,14 @@ solved_phase = Local_Solve_Phase_Boundary(globally_solved_sces)
 def Stability_Plot():
     
     resource_pool_sizes = np.unique(df_simulation['M'])
-    sigma_cs = np.unique(df_simulation['sigma_c'])
+    sigma_ys = np.unique(df_simulation['sigma_y'])
     
     ######################## Phase diagram ######################################
     
     # Simulation data
     
     stability_sim_pivot = le_pivot(df_simulation, columns = 'M',
-                                   index = 'sigma_c')[0]
+                                   index = 'sigma_y')[0]
     
     sns.set_style('ticks')
     
@@ -246,11 +160,15 @@ def Stability_Plot():
     #          ["P", ".", "D3", "D4", ".", "I_C"],
     #          ["P", ".",  ".", ".", ".", "I_C"]]
     
+    #fig, axs = plt.subplot_mosaic(mosaic, figsize = (8.3, 2.5),
+    #                              width_ratios = [6.6, 0.9, 2.1, 2.1, 0.75, 6.75],
+    #                              height_ratios = [1.8, 3.2, 3.2, 1.8],
+    #                              gridspec_kw = {'hspace' : 0.2, 'wspace' : 0.1})
+    
     mosaic = [["P", ".", "I_C"]]
     
     fig, axs = plt.subplot_mosaic(mosaic, figsize = (8.65, 2.5),
                                   width_ratios = [6.6, 6.55, 6.6],
-                                  #height_ratios = [1.8, 3.2, 3.2, 1.8],
                                   gridspec_kw = {'hspace' : 0.2, 'wspace' : 0.1})
     
     subfig = sns.heatmap(stability_sim_pivot, ax = axs["P"],
@@ -267,20 +185,20 @@ def Stability_Plot():
                         labels = resource_pool_sizes[::2], fontsize = 6,
                         rotation = 0)
 
-    axs["P"].set_yticks(np.arange(0.5, len(sigma_cs) + 0.5, 2), 
+    axs["P"].set_yticks(np.arange(0.5, len(sigma_ys) + 0.5, 2), 
                         labels = [r'$' + str(sigma) + '^2$' 
-                                  for sigma in sigma_cs[::2]], fontsize = 6,
+                                  for sigma in sigma_ys[::2]], fontsize = 6,
                         rotation = 0)
     
     axs["P"].set_xlabel('resource pool size, ' + r'$M$', fontsize = 10,
                         weight = 'bold')
-    axs["P"].set_ylabel('total consumption rate variance, ' + \
-                        r'$\sigma_c^2$', fontsize = 10, weight = 'bold')
+    axs["P"].set_ylabel('variance in yield conversion, ' + \
+                        r'$\sigma_y^2$', fontsize = 10, weight = 'bold')
     axs["P"].invert_yaxis()
     
     axs['P'].text(1, 1.35,
-                  'Increasing the variance in consumption rate ' + \
-                    r'$(\sigma_c^2)$' + ' stabilises\ncommunity dynamics',
+                  'Increasing the variance in yield conversion ' + \
+                    r'$(\sigma_y^2)$' + ' destabilises\ncommunity dynamics',
                   fontsize = 11, weight = 'bold',
                   verticalalignment = 'top', horizontalalignment = 'center',
                   transform=axs["P"].transAxes)
@@ -294,21 +212,17 @@ def Stability_Plot():
     # Analytically-derived phase boundary
     
     good_solves = solved_phase.loc[solved_phase['loss'] <= -28, :]
-    
-    def hyperbolic(x, a, b):
-        
-        return a + b/x
-    
-    fit_p, _ = curve_fit(hyperbolic, good_solves['M'], good_solves['sigma_c'],
-                         bounds = [0, [1e6, 1e6]])
+     
+    smoother = np.poly1d(np.polyfit(good_solves['M'], good_solves['sigma_y'], 2))
     
     smoothed_x = np.arange(np.min(resource_pool_sizes) - 25,
                            np.max(resource_pool_sizes) + 25,
                            1)
     
-    y_phase = hyperbolic(smoothed_x, *fit_p) - np.min(sigma_cs)
-    divider = np.unique(np.round(np.abs(np.diff(sigma_cs)), 8))
-    y_vals = (1/divider)*y_phase + 0.5
+    y_phase = smoother(smoothed_x) - np.min(sigma_ys)
+    
+    divider = np.unique(np.round(np.abs(np.diff(sigma_ys)), 8))
+    y_vals = (1/divider)*y_phase + 0.5 
     
     x_vals = (0.5 - (np.min(resource_pool_sizes) - np.min(smoothed_x))/25) + \
         np.arange(0, len(smoothed_x), 1)/25
@@ -321,76 +235,72 @@ def Stability_Plot():
     example_M = 225
 
     df_plot = globally_solved_sces[globally_solved_sces['M'] == example_M]
-    dfl = pd.melt(df_plot[['sigma_c', 'rho', 'Species packing']], ['sigma_c'])
+    dfl = pd.melt(df_plot[['sigma_y', 'rho', 'Species packing']], ['sigma_y'])
     #dfl.loc[dfl['variable'] == 'rho', 'value'] = dfl.loc[dfl['variable'] == 'rho', 'value']**2
     dfl.loc[dfl['variable'] == 'Species packing', 'value'] = \
         np.sqrt(dfl.loc[dfl['variable'] == 'Species packing', 'value'])
         
-    axs['I_C'].add_patch(Rectangle((np.min(sigma_cs), np.min(dfl['value'])),
-                                   hyperbolic(example_M, *fit_p) - np.min(sigma_cs),
+    axs['I_C'].add_patch(Rectangle((smoother(example_M), np.min(dfl['value'])),
+                                   np.max(sigma_ys) - smoother(example_M),
                                    np.max(dfl['value']) - np.min(dfl['value']),
-                                   fill = True, color = '#b6b6d8ff', zorder = 0))
-    
-    axs["I_C"].vlines(hyperbolic(example_M, *fit_p), np.min(dfl['value']),
-                      np.max(dfl['value']),
+                                   fill = True, color = '#6950a3ff', zorder = 0))
+     
+    axs["I_C"].vlines(smoother(example_M), np.min(dfl['value']), np.max(dfl['value']),
                       color = 'black', linewidth = 2.5, zorder = 0)
     
-    subfig1 = sns.lineplot(dfl, x = 'sigma_c', y = 'value', hue = 'variable',
+    subfig1 = sns.lineplot(dfl, x = 'sigma_y', y = 'value', hue = 'variable',
                            ax = axs["I_C"], linewidth = 3,
                            palette = sns.color_palette(['black', 'black'], 2),
                            zorder = 10)
 
-    subfig1 = sns.lineplot(dfl, x = 'sigma_c', y = 'value', hue = 'variable',
+    subfig1 = sns.lineplot(dfl, x = 'sigma_y', y = 'value', hue = 'variable',
                            ax = axs["I_C"], linewidth = 2, marker = 'o', markersize = 8,
                            palette = sns.color_palette(['#00557aff', '#3dc27aff'], 2),
                            zorder = 10, markeredgewidth = 0.4, markeredgecolor = 'black')
     
-    axs["I_C"].set_ylim([np.min(dfl['value']) - 0.02, np.max(dfl['value']) + 0.02])
-    
-    axs["I_C"].set_xlabel('variance in total consumption rate, ' + r'$\sigma_c^2$',
+    #axs["I_C"].set_ylim([0.15, np.max(dfl['value']) + 0.05])
+    axs["I_C"].set_xlabel('variance in yield conversion, ' + r'$\sigma_y^2$',
                           fontsize = 10, weight = 'bold')
     axs["I_C"].set_ylabel('')
     axs["I_C"].tick_params(axis='both', which='major', labelsize=6)
-    axs["I_C"].set_xticks(sigma_cs[::2], labels = [r'$' + str(sigma) + '^2$' 
-                                                   for sigma in sigma_cs[::2]])
+    axs["I_C"].set_xticks(sigma_ys[::2], labels = [r'$' + str(sigma) + '^2$' 
+                                                   for sigma in sigma_ys[::2]])
     
     axs["I_C"].legend_.remove()
     
-    axs['I_C'].text((0.5*(np.max(sigma_cs) + hyperbolic(example_M, *fit_p)) - np.min(sigma_cs))/(np.max(sigma_cs) - np.min(sigma_cs)),
-                    1.03,
-                    'Stable', fontsize = 10, weight = 'bold', color = 'black',
-                    verticalalignment = 'top', horizontalalignment = 'center',
-                    transform=axs["I_C"].transAxes)
-    
-    axs['I_C'].text((0.5*(hyperbolic(example_M, *fit_p) - np.min(sigma_cs)))/(np.max(sigma_cs) - np.min(sigma_cs)),
-                    1.03,
+    axs['I_C'].text((0.5*(np.max(sigma_ys) + smoother(example_M)) - np.min(sigma_ys))/(np.max(sigma_ys) - np.min(sigma_ys)),
+                    1.02,
                     'Unstable', fontsize = 10, weight = 'bold', color = 'black',
                     verticalalignment = 'top', horizontalalignment = 'center',
                     transform=axs["I_C"].transAxes)
     
-    #axs['I_C'].text(0.58, 0.1,
+    axs['I_C'].text((0.5*(smoother(example_M) - np.min(sigma_ys)))/(np.max(sigma_ys) - np.min(sigma_ys)),
+                    1.02,
+                    'Stable', fontsize = 10, weight = 'bold', color = 'black',
+                    verticalalignment = 'top', horizontalalignment = 'center',
+                    transform=axs["I_C"].transAxes)
+        
+    #axs['I_C'].text(0.32, 0.1,
     #                'Stable', fontsize = 10, weight = 'bold', color = 'white',
     #                verticalalignment = 'top', horizontalalignment = 'center',
     #                path_effects = [patheffects.withStroke(linewidth=0.8,
     #                                                       foreground='black')],
     #                transform=axs["I_C"].transAxes)
     
-    #axs['I_C'].text(0.29, 0.1,
+    #axs['I_C'].text(0.62, 0.1,
     #                'Unstable', fontsize = 10, weight = 'bold', color = '#3f007dff',
     #                verticalalignment = 'top', horizontalalignment = 'center',
     #                path_effects = [patheffects.withStroke(linewidth=0.1,
     #                                                       foreground='black')],
     #                transform=axs["I_C"].transAxes)
-        
+         
     #axs["I_C"].annotate("Stability threshold",
-    #                    xytext=(hyperbolic(example_M, *fit_p),
-    #                            np.max(dfl['value']) + 0.08),
-    #                    xy=(hyperbolic(example_M, *fit_p), np.max(dfl['value'])),
+    #                    xytext=(smoother(example_M), np.max(dfl['value']) + 0.07),
+    #                    xy=(smoother(example_M), np.max(dfl['value'])),
     #                    color = 'black', fontsize = 10, weight = 'bold',
     #                    va = 'center', ha = 'center', multialignment = 'center',
     #                    arrowprops={'arrowstyle': '-|>', 'color' : 'black',
-    #                                'lw' : 1},
-    #                    transform=axs["I_C"].transAxes)
+    #                                'lw' : 1})
     
     sns.despine(ax = axs["I_C"])
     
@@ -398,18 +308,11 @@ def Stability_Plot():
     
     '''
     
-    example_M = 125
+    #stable_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effect_sigma_y_final/" + \
+    #                                     "simulations_225_0.075.pkl")
     
-    #stable_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effects_sigma_c_final/" + \
-    #                                     "simulations_125_0.1533.pkl")
-    
-    chaotic_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effects_sigma_c_final/" + \
-                                         "simulations_125_0.0626.pkl")
-    
-    population_stability = np.array([community.lyapunov_exponent
-                                     for community in chaotic_populations])
-    chaotic_stable = chaotic_populations[np.argmin(population_stability)]
-    chaotic_chaotic = chaotic_populations[np.argmax(population_stability)]
+    chaotic_populations = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/finite_effect_sigma_y_final/" + \
+                                         "simulations_225_0.225.pkl")
     
     def indices_and_cmaps(M):
         
@@ -452,14 +355,14 @@ def Stability_Plot():
         return ax
     
     i_c_rp = indices_and_cmaps(example_M)
-    i_c_rp = [i_c for _ in range(3) for i_c in i_c_rp]
+    i_c_rp = [i_c for _ in range(2) for i_c in i_c_rp]
     
     for ax, simulation, i_c, title in \
-        zip([axs['D1'], axs['D2'], axs['D3'], axs['D4']], # axs['D5'], axs['D6']],
-            #[stable_populations[0], stable_populations[0],
-             [chaotic_stable, chaotic_stable, 
-             chaotic_chaotic, chaotic_chaotic],
-            i_c_rp, ['species', 'resources', '', '']): #, '', '']):
+        zip([axs['D1'], axs['D2'], axs['D3'], axs['D4']],
+             [chaotic_populations[0], chaotic_populations[0],
+              chaotic_populations[1], chaotic_populations[1]],
+             #stable_populations[0], stable_populations[0],],
+            i_c_rp, ['species', 'resources', '', '']):
         
         plot_dynamics(ax, simulation, i_c, title)
         sns.despine(ax = ax)
@@ -473,14 +376,13 @@ def Stability_Plot():
     
     '''
     
-    ##################################################
+    ######################################################
     
-    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_sigma_c_M_sim_and_analyticalphase_intrplt.png",
+    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_sigma_y_M_sim_and_analyticalphase_intrplt.png",
                 bbox_inches='tight')
-    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_sigma_c_M_sim_and_analyticalphase_intrplt.svg",
+    plt.savefig("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Figures/self_limit_sigma_y_M_sim_and_analyticalphase_intrplt.svg",
                 bbox_inches='tight')
-        
+    
     plt.show()
-
+    
 Stability_Plot()
-

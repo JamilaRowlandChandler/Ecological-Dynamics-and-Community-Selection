@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 
 os.chdir("C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
          "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling/" + \
-             "finite_size_effects")
+             "stability_transitions")
     
 sys.path.insert(0, "C:/Users/jamil/Documents/PhD/GitHub projects/Ecological-Dynamics-and-Community-Selection/" + \
                     "Ecological-Dynamics/Consumer-Resource Models/alternative_growth_consumption_coupling")

@@ -48,8 +48,9 @@ def pickle_dump(filename,data):
         
 # %%
 
-
-def CRM_across_parameter_space(parameter_sets, subdirectory, parms_for_filenames):
+def CRM_across_parameter_space(parameter_sets, subdirectory, parms_for_filenames,
+                               simulation_kwargs = dict(no_communities = 20,
+                                                        t_end = 7000)):
     
     '''
     
@@ -82,24 +83,59 @@ def CRM_across_parameter_space(parameter_sets, subdirectory, parms_for_filenames
     if not os.path.exists(full_directory):
         
         os.makedirs(full_directory)
+        
+    ######################################
+        
+    def model_specific_args(parameter_sets, simulation_kwargs):
+        
+        match simulation_kwargs.get('model', "Self-limiting resource supply"):
+            
+            case "Self-limiting resource supply":
+                
+                m_s_rates_args_list = [dict(death_method = 'constant',
+                                            death_args =  {'d' : parm_set['d']},
+                                            resource_growth_method = 'constant',
+                                            resource_growth_args = {'b' : parm_set['b']})
+                                       for parm_set in parameter_sets]
+                
+            case "Self-limiting resource supply, self-inhibition":
+                
+                m_s_rates_args_list = [dict(death_method = 'constant',
+                                            death_args =  {'d' : parm_set['d']},
+                                            resource_growth_method = 'constant',
+                                            resource_growth_args = {'b' : parm_set['b']},
+                                            si_method = 'constant',
+                                            si_args = {'si' : parm_set['si']})
+                                       for parm_set in parameter_sets]
+                
+        return m_s_rates_args_list
+    
+    names_list = [str(np.round(parm_set[key0], 4)) + "_" + \
+                  str(np.round(parm_set[key1], 4)) 
+                  for parm_set in parameter_sets]
+        
+    M_list = [parm_set['M'] for parm_set in parameter_sets]
+    S_list = [parm_set['S'] for parm_set in parameter_sets]
+    
+    g_c_rates_args_list = [dict(method = 'growth function of consumption',
+                                         mu_c = parm_set['mu_c'],
+                                         sigma_c = parm_set['sigma_c'],
+                                         mu_g = parm_set['mu_y'],
+                                         sigma_g = parm_set['sigma_y'])
+                           for parm_set in parameter_sets]
+    
+    m_s_rates_args_list = model_specific_args(parameter_sets, simulation_kwargs)
     
     # Iterate through the parameter space, creating and simulating community dynamics
-    for parm_set in tqdm(parameter_sets, position = 0, leave = True):
-        
-        CRMs_create_and_save(subdirectory + "/simulations_" + \
-                                 str(np.round(parm_set[key0], 4)) + "_" + \
-                                 str(np.round(parm_set[key1], 4)),
-                             parm_set['S'], parm_set['M'],
-                             dict(method = 'growth function of consumption',
-                                  mu_c = parm_set['mu_c'],
-                                  sigma_c = parm_set['sigma_c'],
-                                  mu_g = parm_set['mu_y'],
-                                  sigma_g = parm_set['sigma_y']),
-                             dict(death_method = 'constant',
-                                  death_args =  {'d' : parm_set['d']},
-                                  resource_growth_method = 'constant',
-                                  resource_growth_args = {'b' : parm_set['b']}),
-                             no_communities = 20, t_end = 7000)
+    
+    for name, M, S, growth_consumption_rates_args, model_specific_rates_args in \
+        tqdm(zip(names_list, M_list, S_list, g_c_rates_args_list, m_s_rates_args_list),
+             position = 0, leave = True, total = len(names_list)):
+            
+        CRMs_create_and_save(subdirectory + "/simulations_" + name,
+                             S, M, growth_consumption_rates_args,
+                             model_specific_rates_args,
+                             **simulation_kwargs)
             
 #%%
 
@@ -142,6 +178,7 @@ def CRMs_create_and_save(filepath,
     pickle_dump("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" + \
                 filepath + ".pkl",
                 communities)
+        
     del communities
 
 # %%
@@ -149,6 +186,7 @@ def CRMs_create_and_save(filepath,
 def consumer_resource_model_dynamics(no_species, no_resources,
                                      growth_consumption_rates_args,
                                      model_specific_rates_args,
+                                     model = "Self-limiting resource supply",
                                      no_communities = 5, no_init_conds = 2,
                                      t_end = 3500):
     
@@ -158,8 +196,7 @@ def consumer_resource_model_dynamics(no_species, no_resources,
                            model_specific_rates_args,
                            t_end):
     
-        community = Consumer_Resource_Model("Self-limiting resource supply",
-                                            no_species, no_resources)
+        community = Consumer_Resource_Model(model, no_species, no_resources)
 
         community.growth_consumption_rates(**growth_consumption_rates_args)
         community.model_specific_rates(**model_specific_rates_args)
@@ -189,15 +226,28 @@ def generate_simulation_df(directory):
     
     df = CRM_df(directory, parameters)
     
+    df.rename(columns = {'mu_c' : 'mu_c/M', 'sigma_c' : 'sigma_c/root_M',
+                         'mu_g' : 'mu_y', 'sigma_g' : 'sigma_y',
+                         'no_resources' : 'M', 'no_species' : 'S'},
+                        inplace = True)
+    
+    df['mu_c'] = df['mu_c/M'] * df['M']
+    df['sigma_c'] = df['sigma_c/root_M'] * np.sqrt(df['M'])
+    
+    df['rho'] = np.sqrt(1 / (1 + \
+                             ((df['sigma_y']/df['mu_y'])**2 * (1 + \
+                                                               ((df['mu_c']**2)/(df['M'] * df['sigma_c']**2))))))
+    
+    df['Instability distance'] = df['rho']**2 - df['Species packing']
+    df['Infeasibility distance'] = df['phi_R'] - df['phi_N']/(df['M']/df['S'])
+    
     for var in ['rho', 'mu_c', 'mu_y', 'sigma_c', 'sigma_y', 'mu_c/M',
                 'sigma_c/root_M']:
         
         df[var] = np.round(df[var], 6)
     
-    df['no_resources'] = np.int32(df['no_resources'])
-    
-    df.rename(columns = {'no_resources' : 'M', 'no_species' : 'S'},
-              inplace = True)
+    df['M'] = np.int32(df['M'])
+    df['S'] = np.int32(df['S'])
     
     return df
 
@@ -247,23 +297,23 @@ def community_dynamics_df(communities, parameters):
                                                            for community in communities]) 
                                            for parameter in parameters})
             
-    parameter_df.rename(columns = {'mu_c' : 'mu_c/M', 'sigma_c' : 'sigma_c/root_M',
-                                   'mu_g' : 'mu_y', 'sigma_g' : 'sigma_y'},
-                        inplace = True)
+    #parameter_df.rename(columns = {'mu_c' : 'mu_c/M', 'sigma_c' : 'sigma_c/root_M',
+    #                               'mu_g' : 'mu_y', 'sigma_g' : 'sigma_y'},
+    #                    inplace = True)
     
     df = pd.concat([parameter_df, properties_df], axis = 1)
     
-    df['mu_c'] = df['mu_c/M'] * df['no_resources']
-    df['sigma_c'] = df['sigma_c/root_M'] * np.sqrt(df['no_resources'])
+    #df['mu_c'] = df['mu_c/M'] * df['no_resources']
+    #df['sigma_c'] = df['sigma_c/root_M'] * np.sqrt(df['no_resources'])
     
-    df['rho'] = np.sqrt(1 / (1 + \
-                             ((df['sigma_y']/df['mu_y'])**2 * (1 + \
-                                                               ((df['mu_c']**2)/(df['no_resources'] * df['sigma_c']**2))))))
+    #df['rho'] = np.sqrt(1 / (1 + \
+    #                         ((df['sigma_y']/df['mu_y'])**2 * (1 + \
+    #                                                           ((df['mu_c']**2)/(df['no_resources'] * df['sigma_c']**2))))))
     
     df['Species packing'] = (df['phi_N']*df['no_species'])/(df['phi_R']*df['no_resources'])
-    df['Instability distance'] = df['rho']**2 - df['Species packing']
+    #df['Instability distance'] = df['rho']**2 - df['Species packing']
     
-    df['Infeasibility distance'] = df['phi_R'] - df['phi_N']/(df['no_resources']/df['no_species'])
+    #df['Infeasibility distance'] = df['phi_R'] - df['phi_N']/(df['no_resources']/df['no_species'])
     
     return df
 
@@ -278,6 +328,11 @@ def le_pivot(df, index = 'sigma_c', columns = 'mu_c', values = 'Max. lyapunov ex
     
     return [pd.pivot_table(df, index = index, columns = columns,
                           values = 'Max. lyapunov exponent', aggfunc = prop_chaotic)]
+
+def le_pivot_r(df, index = 'sigma_c', columns = 'mu_c', values = 'Max. lyapunov exponent'):
+    
+    return [1 - pd.pivot_table(df, index = index, columns = columns,
+                               values = 'Max. lyapunov exponent', aggfunc = prop_chaotic)]
 
 def agg_pivot(df, values, index = 'sigma_c', columns = 'mu_c', aggfunc = 'mean'):
     
@@ -335,11 +390,15 @@ def generic_heatmaps(df, x, y, xlabel, ylabel, variables, cmaps, titles,
         
         fig, axs = plt.subplot_mosaic(mosaic, figsize = figsize,
                                       gridspec_kw = gridspec_kw, layout = 'constrained')
+        
+        iterator = axs.values()
     
     else:
         
         fig, axs = plt.subplots(fig_dims[0], fig_dims[1], figsize = figsize,
                                 sharex = True, sharey = True, layout = 'constrained')
+        
+        iterator = axs.flatten()
 
     fig.supxlabel(xlabel, fontsize = 16, weight = 'bold')
     fig.supylabel(ylabel, fontsize = 16, weight = 'bold', horizontalalignment = 'center',
@@ -374,7 +433,7 @@ def generic_heatmaps(df, x, y, xlabel, ylabel, variables, cmaps, titles,
         
     else:
 
-        for ax, variable, cmap, title in zip(axs.values(), variables, cmaps, titles):
+        for ax, variable, cmap, title in zip(iterator, variables, cmaps, titles):
             
             ax.set_facecolor('grey')
             
@@ -386,19 +445,131 @@ def generic_heatmaps(df, x, y, xlabel, ylabel, variables, cmaps, titles,
             subfig.axhline(pivot_tables_plot[variable].shape[0], 0, 1,
                            color = 'black', linewidth = 2)
             subfig.axvline(0, 0, 1, color = 'black', linewidth = 2)
-            subfig.axvline(pivot_tables_plot[variables].shape[1], 0, 1,
+            subfig.axvline(pivot_tables_plot[variable].shape[1], 0, 1,
                            color = 'black', linewidth = 2)
     
-            ax.set_yticks([0.5, len(np.unique(df[y])) - 0.5],
-                          labels = [np.round(np.min(df[y]), 3),
-                                    np.round(np.max(df[y]), 3)], fontsize = 14)
-            ax.set_xticks([0.5, len(np.unique(df[x])) - 0.5], 
-                          labels = [np.round(np.min(df[x]), 3),
-                                    np.round(np.max(df[x]), 3)],
-                          fontsize = 14, rotation = 0)
+            ax.set_yticks(np.arange(0.5, len(pivot_tables_plot[variable].index.to_numpy()) + 0.5, 2),
+                          labels = pivot_tables_plot[variable].index.to_numpy()[::2], fontsize = 8)
+            ax.set_xticks(np.arange(0.5, len(pivot_tables_plot[variable].columns.to_numpy()) + 0.5, 2),
+                          labels = pivot_tables_plot[variable].columns.to_numpy()[::2], 
+                          fontsize = 8, rotation = 0)
             ax.set_xlabel('')
             ax.set_ylabel('')
             ax.invert_yaxis()
             ax.set_title(title, fontsize = 16, weight = 'bold')
+        
+    return fig, axs
+
+# %%
+
+def generic_heatmaps_multi(dfs, xs, ys, xlabels, ylabels, variable, cmap,
+                           fig_dims, figsize,
+                           pivot_functions = None, is_logged = None, specify_min_max = None,
+                           mosaic = None, gridspec_kw = None, cbar_pos = 0, **kwargs):
+    
+    if isinstance(xs, str):
+        
+        x_iterator = np.repeat(xs, len(dfs))
+        
+    else:
+        
+        x_iterator = xs
+    
+    if pivot_functions is None:
+    
+        pivot_tables = [df.pivot(index = y, columns = x, values = variable)
+                        for x, y, df in zip(x_iterator, ys, dfs)]
+        
+    else:
+        
+        pivot_tables = [(df.pivot(index = x, columns = y, values = variable)
+                                    if pivot_functions[variable] is None 
+                                    else
+                                    pivot_functions[variable](df, index = y,
+                                                              columns = x,
+                                                              values = variable)[0]) 
+                        for x, y, df in zip(x_iterator, ys, dfs)]
+        
+    
+    if is_logged is None:
+        
+        pivot_tables_plot = pivot_tables
+        
+    else:
+    
+        pivot_tables_plot = [np.log10(np.abs(pivot_table))
+                             for pivot_table in pivot_tables]
+    
+    if specify_min_max is None:
+        
+        v_min_max = [[np.min(pivot_table), np.max(pivot_table)]
+                     for pivot_table in pivot_tables_plot]
+        
+    else:
+        
+        v_min_max = specify_min_max
+        
+        
+    def plot_ax(i, ax, pivot_table, v_mm, ylabel, cbar_pos):
+        
+        ax.set_facecolor('grey')
+        
+        if i == cbar_pos:
+        
+            subfig = sns.heatmap(pivot_table, ax = ax,
+                        vmin = v_mm[0], vmax = v_mm[1],
+                        cbar = True, cmap = cmap, **kwargs)
+            
+        else:
+            
+            subfig = sns.heatmap(pivot_table, ax = ax,
+                        vmin = v_mm[0], vmax = v_mm[1],
+                        cbar = False, cmap = cmap, **kwargs)
+        
+        subfig.axhline(0, 0, 1, color = 'black', linewidth = 2)
+        subfig.axhline(pivot_table.shape[0], 0, 1,
+                       color = 'black', linewidth = 2)
+        subfig.axvline(0, 0, 1, color = 'black', linewidth = 2)
+        subfig.axvline(pivot_table.shape[1], 0, 1,
+                       color = 'black', linewidth = 2)
+    
+        ax.set_yticks(np.arange(0.5, len(pivot_table.index.to_numpy()) + 0.5, 2),
+                      labels = pivot_table.index.to_numpy()[::2], fontsize = 8)
+        ax.set_xticks(np.arange(0.5, len(pivot_table.columns.to_numpy()) + 0.5, 2),
+                      labels = pivot_table.columns.to_numpy()[::2], 
+                      fontsize = 8, rotation = 0)
+        ax.set_ylabel(ylabel, fontsize = 10, weight = 'bold')
+        ax.invert_yaxis()
+        
+    sns.set_style('ticks')
+    
+    if isinstance(xs, str):
+        
+        fig, axs = plt.subplots(fig_dims[0], fig_dims[1], figsize = figsize,
+                                layout = 'constrained', sharex = True)
+        
+        fig.supxlabel(xlabels, fontsize = 10, weight = 'bold')
+        
+        for i, (ax, pivot_table, ylabel, v_mm) in enumerate(zip(axs.flatten(),
+                                                                pivot_tables_plot,
+                                                                ylabels,
+                                                                v_min_max)):
+            
+            plot_ax(i, ax, pivot_table, v_mm, ylabel, cbar_pos)
+            ax.set_xlabel('')
+        
+    else:
+        
+        fig, axs = plt.subplots(fig_dims[0], fig_dims[1], figsize = figsize,
+                                layout = 'constrained')
+
+        for i, (ax, pivot_table, xlabel, ylabel, v_mm) in enumerate(zip(axs.flatten(),
+                                                                        pivot_tables_plot,
+                                                                        xlabels,
+                                                                        ylabels,
+                                                                        v_min_max)):
+            
+            plot_ax(i, ax, pivot_table, v_mm, ylabel, cbar_pos)
+            ax.set_xlabel(xlabel, fontsize = 10, weight = 'bold')
         
     return fig, axs
