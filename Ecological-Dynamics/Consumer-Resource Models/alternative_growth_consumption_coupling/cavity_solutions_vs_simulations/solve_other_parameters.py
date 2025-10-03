@@ -320,4 +320,4 @@ def plot_instability_distances():
     
     plt.show()
     
-plot_instability_distances_()
+plot_instability_distances()

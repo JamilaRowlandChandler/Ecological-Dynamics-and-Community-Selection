@@ -20,8 +20,12 @@ from initial_abundances import InitialConditionsInterface
 
 class DifferentialEquationsInterface(InitialConditionsInterface):
     
-    def simulate_community(self, t_end, no_init_cond, init_cond_func='Mallmin',
-                           assign = True, **kwargs):
+    def simulate_community(self,
+                           t_end : float,
+                           no_init_cond : int,
+                           init_cond_func : str ='Mallmin',
+                           assign : bool = True,
+                           **kwargs : any):
         
         '''
         
@@ -43,9 +47,10 @@ class DifferentialEquationsInterface(InitialConditionsInterface):
             Whether or not to assign simulations as object attributes. True for
             simulations, false for calculating lyapunov exponents. 
             The default is True.
-        **kwargs : TYPE
-            Optional arguments for initial condition function, depending on 
-            the function called.
+        **kwargs : any
+            Optional argument for initial condition function. Of the form
+            {'user_supplied_init_cond' : {'species' : [initial species abundances],
+                                          'resources' : [initial resource abundances]}}
 
         Returns
         -------

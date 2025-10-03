@@ -69,7 +69,7 @@ resource_pool_sizes = np.arange(50, 275, 25)
 
 # mu_c = 160
 
-M_effect_sigma_c(resource_pool_sizes, np.array([0.5, 2.5]), 160,
+M_effect_sigma_c(resource_pool_sizes, (0.5, 2.5), 160,
                  11, {'mu_y': 1, 'sigma_y' : 1.6/np.sqrt(150), 'b' : 1,
                       'd' : 1, 'gamma' : 1},
                  'finite_effects_sigma_c_final')

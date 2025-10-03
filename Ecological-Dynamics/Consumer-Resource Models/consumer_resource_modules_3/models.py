@@ -6,17 +6,20 @@ Created on Sun May  4 13:01:05 2025
 """
 
 import numpy as np
+import numpy.typing as npt
+from typing import Literal, Union, TypedDict
 from scipy.integrate import solve_ivp
 
 from parameters import ParametersInterface
 from differential_equations import DifferentialEquationsInterface
 from differential_equations import unbounded_growth
 from community_level_properties import CommunityPropertiesInterface
-#from initial_abundances import InitialConditionsInterface
 
 # %%
 
-def Consumer_Resource_Model(model, no_species, no_resources):
+def Consumer_Resource_Model(model : str,
+                            no_species : int,
+                            no_resources : int):
     
     '''
     
@@ -79,7 +82,7 @@ class SL_CRM(ParametersInterface, DifferentialEquationsInterface, CommunityPrope
     
     '''
     
-    def __init__(self, no_species, no_resources):
+    def __init__(self, no_species : int, no_resources : int):
         
         '''
         
@@ -103,10 +106,21 @@ class SL_CRM(ParametersInterface, DifferentialEquationsInterface, CommunityPrope
         self.no_resources = no_resources
         
     def model_specific_rates(self,
-                             death_method = 'constant',
-                             death_args = {'d' : 1},
-                             resource_growth_method = 'constant',
-                             resource_growth_args = {'b' : 1}):
+                             death_method : 
+                                 Literal['normal', 'constant', 'user-supplied'] 
+                                 = 'constant',
+                             death_args : Union[TypedDict('normal', {'mu' : float, 'sigma' : float}),
+                                                TypedDict('constant', {'d' : float}),
+                                                TypedDict('user-supplied', {'d' : npt.NDArray})]
+                             = {'d' : 1},
+                             resource_growth_method : 
+                                 Literal['normal', 'constant', 'user-supplied'] 
+                                 = 'constant',
+                             resource_growth_args : 
+                                 Union[TypedDict('normal', {'mu' : float, 'sigma' : float}),
+                                       TypedDict('constant', {'b' : float}),
+                                       TypedDict('user-supplied', {'b' : npt.NDArray})]
+                                 = {'b' : 1}):
         
         '''
         
@@ -124,7 +138,7 @@ class SL_CRM(ParametersInterface, DifferentialEquationsInterface, CommunityPrope
         death_args : dict
             Arguments for death_method.
             If 'normal', first argument is the mean, second is the stand deviation
-            e.g., {'mu': mean, 'sigma' : mean}
+            e.g., {'mu': mean, 'sigma' : standard deviation}
             If 'constant', the key is the parameter name, argument is the fixed value
             e.g., {'d' : val}
             If 'used-supplied', argument is the array of death rates 
@@ -158,7 +172,9 @@ class SL_CRM(ParametersInterface, DifferentialEquationsInterface, CommunityPrope
     
     #####################################################################
     
-    def simulation(self, t_end, initial_abundance):
+    def simulation(self,
+                   t_end : float,
+                   initial_abundance : npt.NDArray):
         
         '''
         
@@ -245,7 +261,7 @@ class SL_SI_CRM(ParametersInterface, DifferentialEquationsInterface,
     
     '''
     
-    def __init__(self, no_species, no_resources):
+    def __init__(self, no_species : int, no_resources : int):
         
         '''
         
@@ -268,12 +284,28 @@ class SL_SI_CRM(ParametersInterface, DifferentialEquationsInterface,
         self.no_resources = no_resources
         
     def model_specific_rates(self,
-                             death_method = 'constant',
-                             death_args = {'d' : 1},
-                             resource_growth_method = 'constant',
-                             resource_growth_args = {'b' : 1},
-                             si_method = 'constant',
-                             si_args = {'si' : 1}):
+                             death_method : 
+                                 Literal['normal', 'constant', 'user-supplied'] 
+                                 = 'constant',
+                             death_args : Union[TypedDict('normal', {'mu' : float, 'sigma' : float}),
+                                                TypedDict('constant', {'d' : float}),
+                                                TypedDict('user-supplied', {'d' : npt.NDArray})]
+                             = {'d' : 1},
+                             resource_growth_method : 
+                                 Literal['normal', 'constant', 'user-supplied'] 
+                                 = 'constant',
+                             resource_growth_args : 
+                                 Union[TypedDict('normal', {'mu' : float, 'sigma' : float}),
+                                       TypedDict('constant', {'b' : float}),
+                                       TypedDict('user-supplied', {'b' : npt.NDArray})]
+                                 = {'b' : 1},
+                             si_method : 
+                                 Literal['normal', 'constant', 'user-supplied'] = 'constant',
+                             si_args : 
+                                 Union[TypedDict('normal', {'mu' : float, 'sigma' : float}),
+                                       TypedDict('constant', {'si' : float}),
+                                       TypedDict('user-supplied', {'si' : npt.NDArray})]
+                                 = {'si' : 1}):
         
         '''
         
@@ -331,7 +363,9 @@ class SL_SI_CRM(ParametersInterface, DifferentialEquationsInterface,
     
     #####################################################################
     
-    def simulation(self, t_end, initial_abundance):
+    def simulation(self,
+                   t_end : float,
+                   initial_abundance : npt.NDArray):
         
         '''
         

@@ -13,14 +13,20 @@ import numpy as np
 
 class InitialConditionsInterface:
     
-    def generate_initial_conditions(self, no_init_cond, 
-                                    init_cond_func, **kwargs):
-        
+    def generate_initial_conditions(self,
+                                    no_init_cond : int, 
+                                    init_cond_func : str,
+                                    **kwargs : any):
         '''
         
         Generate and assign initial abundances for species and resources 
         from multiple options/functions.
-        
+
+        Parameters
+        ----------
+        For details, see the simulate_community method in differential_equations.py
+
+
         '''
         
         species_abundances = self.__initial_variable_conditions('species',

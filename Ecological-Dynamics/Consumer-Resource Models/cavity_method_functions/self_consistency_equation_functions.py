@@ -10,6 +10,8 @@ Created on Tue Feb 11 20:56:36 2025
 ########################
 
 import numpy as np
+import numpy.typing as npt
+from typing import Union, Literal
 import pandas as pd
 import os
 import pickle
@@ -28,16 +30,19 @@ import self_limiting_g_cg_equations as slcg
 
 # %% 
 
-def parameter_combinations(parameter_ranges, n):
+def parameter_combinations(parameter_ranges : Union[list[tuple[float, float], tuple[float, float]],
+                                                    list[tuple[float, float], npt.NDArray],
+                                                    list[npt.NDArray, tuple[float, float]],
+                                                    list[npt.NDArray, npt.NDArray]],
+                           n : int):
     
     '''
     
     Generate all parameter combinations from 2 parameter sets
     Parameters
     ----------
-    parameter_ranges : list of lists or np.ndarray
-        This can either be the a list of parameter ranges, or a pre-specified
-        parameter list.
+    parameter_ranges : list of tuples or np.ndarray
+        tuple = parameter range, np.ndarray =  pre-specified list of parameters.
     n : int
         Number of parameter values per set, if parameters are being generated 
         from a range.
@@ -51,9 +56,10 @@ def parameter_combinations(parameter_ranges, n):
     
     # Generate all parameter combinations from parameter ranges or 
     #   pre-specified parameter sets
-    variable_parameter_vals = np.meshgrid(*[np.linspace(*val_range, n) if len(val_range) == 2
-                               else val_range
-                               for val_range in parameter_ranges])
+    variable_parameter_vals = np.meshgrid(*[np.linspace(*val_range, n) 
+                                            if isinstance(val_range, tuple)
+                                            else val_range
+                                            for val_range in parameter_ranges])
      
     # flatten meshgrid to get a 2D array of all parameter combinations
     #   1 row = 1 parameter
@@ -63,7 +69,8 @@ def parameter_combinations(parameter_ranges, n):
 
 # %%
 
-def variable_fixed_parameters(variable_parameters, fixed_parameters,
+def variable_fixed_parameters(variable_parameters : list,
+                              fixed_parameters : dict,
                               v_names = None):
     
     '''
@@ -72,7 +79,7 @@ def variable_fixed_parameters(variable_parameters, fixed_parameters,
 
     Parameters
     ----------
-    variable_parameters : list, dict or np.ndarray
+    variable_parameters : list of lists, dicts or np.ndarrays
         Array of variable parameter combinations, usually generated using 
         parameter_combinations().
     fixed_parameters : dict
@@ -87,7 +94,7 @@ def variable_fixed_parameters(variable_parameters, fixed_parameters,
         List of dictionaries of parameter sets.
 
     '''
-    if isinstance(variable_parameters[0], (list, np.ndarray)) == True:
+    if isinstance(variable_parameters[0], (list, np.ndarray)):
         
         # convert array of variable parameters into a dictionary (with 
         #   corresponding parameter names), then merge with the dict of fixed
@@ -103,7 +110,7 @@ def variable_fixed_parameters(variable_parameters, fixed_parameters,
     
     # if variable parameters are already in a list of dicts, merge each dict
     #   with fixed parameters in a list comprehension
-    elif isinstance(variable_parameters[0], dict) == True:
+    elif isinstance(variable_parameters[0], dict):
         
         variable_list = [v_p | fixed_parameters for v_p in variable_parameters]
                          
@@ -111,21 +118,25 @@ def variable_fixed_parameters(variable_parameters, fixed_parameters,
 
 # %%
 
-def solve_self_consistency_equations(model,
-                                     parameters,
-                                     solved_quantities,
-                                     bounds,
-                                     x_init,
-                                     solver_name,
-                                     solver_kwargs = {'xtol' : 1e-13,
-                                                      'ftol' : 1e-13},
-                                     other_kwargs = {},
-                                     include_multistability = False):
+def solve_self_consistency_equations(model : Literal['self-limiting, rho',
+                                                     'self-limiting, yc c',
+                                                     'self-limiting, g cg',
+                                                     'externally supplied'],
+                                     parameters : Union[list, dict],
+                                     solved_quantities : list[str],
+                                     bounds : Union[list[tuple[float], tuple[float]],
+                                                    list[list[tuple[float], tuple[float]]]],
+                                     x_init : Union[npt.NDArray, list[npt.NDArray]],
+                                     solver_name : Literal['basin-hopping', 'least-squares'],
+                                     solver_kwargs : Union[dict, list] = {'xtol' : 1e-13,
+                                                                          'ftol' : 1e-13},
+                                     other_kwargs : Union[dict, list] = {},
+                                     include_multistability : bool = False):
     '''
     
     Calls solve_sces for solving the system of self-consistency equations 
-    (phi_N, N_mean, q_N, v_N, phi_R, R_mean, q_R, and chi_R) and the solve for
-    the stability quations (dNde and dRde)
+    (phi_N, N_mean, q_N, v_N, phi_R, R_mean, q_R, and chi_R) and any other model parameters.
+    It then solves for the stability quations in eq. (62) and (63) of the SI (dNde and dRde)
 
     Parameters
     ----------
@@ -144,7 +155,7 @@ def solve_self_consistency_equations(model,
         equations.
     bounds : list containing 2 tuples, or list of lists of tuples 
         The lower and upper bounds of the quantities being solved for.
-    x_init : list of np.ndarray, or list of lists
+    x_init : np.ndarray, or list of lists
         The initial values of the solved_quantities.
     solver_name : str
         The routine for solving the self consistency equations.
@@ -200,9 +211,18 @@ def solve_self_consistency_equations(model,
     
 # %%
 
-def solve_sces(parameters, model, solved_quantities, bounds, x_init, solver,
-               solver_kwargs,
-               other_kwargs = {}, include_multistability = False):
+def solve_sces(parameters : Union[list, dict],
+               model : Literal['self-limiting, rho', 'self-limiting, yc c',
+                               'self-limiting, g cg', 'externally supplied'],
+               solved_quantities : list[str],
+               bounds : Union[list[tuple[float], tuple[float]],
+                              list[list[tuple[float], tuple[float]]]],
+               x_init : Union[npt.NDArray, list[npt.NDArray]],
+               solver,
+               solver_kwargs : Union[dict, list] = {'xtol' : 1e-13,
+                                                    'ftol' : 1e-13},
+               other_kwargs : Union[dict, list] = {},
+               include_multistability : bool = False):
     
     '''
     
@@ -311,17 +331,24 @@ def solve_sces(parameters, model, solved_quantities, bounds, x_init, solver,
         
         # find the no. times/sets that need iterating through (n parameter sets
         #   = n iters)
-        max_iter = len(args_list[3]) # no of parameter sets
-        
-        # Create dictionary where the key is the solver arg name, and the value
-        #   are the sets that need iterating through
-        
-        iterable_args_dict = {arg_name : (arg if any(arg) 
-                                          and isinstance(arg, collection_types_1)
-                                          and isinstance(arg[0], collection_types_2)
-                                          else [arg for _ in range(max_iter)])
-                              for arg_name, arg in zip(new_arg_names, args_list)}
-        
+        if isinstance(args_list[3], dict):
+            
+            iterable_args_dict = {arg_name : [arg]
+                                  for arg_name, arg in zip(new_arg_names, args_list)}
+            
+        else: 
+            
+            max_iter = len(args_list[3]) # no of parameter sets
+            
+            # Create dictionary where the key is the solver arg name, and the value
+            #   are the sets that need iterating through
+            
+            iterable_args_dict = {arg_name : (arg if any(arg) 
+                                              and isinstance(arg, collection_types_1)
+                                              and isinstance(arg[0], collection_types_2)
+                                              else [arg for _ in range(max_iter)])
+                                  for arg_name, arg in zip(new_arg_names, args_list)}
+            
         # Convert dict of sets in list of dicts, where each dict value is one 
         #   arg val.
         iterable_kwargs = pd.DataFrame(iterable_args_dict).to_dict('records')
@@ -344,9 +371,16 @@ def solve_sces(parameters, model, solved_quantities, bounds, x_init, solver,
     # Convert array to dataframe. Each column solved quantity, each row is the 
     # solves sces for a given parameter set
     fitted_values_df = pd.DataFrame(fitted_values_final_loss, columns = solved_quantities + ['loss'])
-    
+
     # combine parameter sets and solved equations into a single dataframe
-    df = pd.concat([pd.DataFrame(parameters), fitted_values_df], axis = 1)
+    
+    if isinstance(parameters, dict):
+        
+        df = pd.concat([pd.DataFrame([parameters]), fitted_values_df], axis = 1)
+        
+    else : 
+    
+        df = pd.concat([pd.DataFrame(parameters), fitted_values_df], axis = 1)
     
     return df
         

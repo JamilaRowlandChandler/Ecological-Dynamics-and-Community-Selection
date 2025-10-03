@@ -193,7 +193,7 @@ def Local_Solve_Phase_Boundary(solved_sces, solved_quantity = 'mu_c',
                                    'least-squares', 
                                    solver_kwargs = {'xtol' : 1e-13, 'ftol' : 1e-13},
                                    include_multistability = True)
-     
+    
     return solved_phase
       
 # %%
@@ -220,6 +220,11 @@ solved_phase = Local_Solve_Phase_Boundary(globally_solved_sces)
 
 # %%
 
+plt.plot(solved_phase['M'], solved_phase['mu_c'])
+plt.show()
+
+# %%
+
 def Stability_Plot():
     
     resource_pool_sizes = np.unique(df_simulation['M'])
@@ -229,8 +234,8 @@ def Stability_Plot():
     
     # Simulation data
     
-    stability_sim_pivot = le_pivot(df_simulation, columns = 'M',
-                                   index = 'mu_c')[0]
+    stability_sim_pivot = le_pivot_r(df_simulation, columns = 'M',
+                                     index = 'mu_c')[0]
     
     sns.set_style('ticks')
     
@@ -245,7 +250,7 @@ def Stability_Plot():
                                   gridspec_kw = {'hspace' : 0.1, 'wspace' : 0.1})
     
     subfig = sns.heatmap(stability_sim_pivot, ax = axs["P"],
-                         vmin = 0, vmax = 1, cbar = True, cmap = 'Purples')
+                         vmin = 0, vmax = 1, cbar = True, cmap = 'Purples_r')
     
     subfig.axhline(0, 0, 1, color = 'black', linewidth = 2)
     subfig.axhline(stability_sim_pivot.shape[0], 0, 1,

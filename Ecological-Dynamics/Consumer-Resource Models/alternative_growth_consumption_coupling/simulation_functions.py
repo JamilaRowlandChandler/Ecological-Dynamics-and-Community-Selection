@@ -204,7 +204,7 @@ def consumer_resource_model_dynamics(no_species, no_resources,
         community.simulate_community(t_end, no_init_conds)
         community.calculate_community_properties()
         community.lyapunov_exponent = max_le(community, 500, community.ODE_sols[0].y[:, -1],
-                                             1e-3, dt = 20, separation = 1e-3)
+                                             dt = 20, separation = 1e-3)
         
         return community 
 

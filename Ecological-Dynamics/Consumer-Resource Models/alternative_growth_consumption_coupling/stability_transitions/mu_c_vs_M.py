@@ -66,7 +66,7 @@ resource_pool_sizes = np.arange(50, 275, 25)
 
 # %%
 
-M_effect_fixed_C(resource_pool_sizes, np.array([100, 250]), 1.6,
+M_effect_fixed_C(resource_pool_sizes, (100, 250), 1.6,
                  11, {'mu_y': 1, 'sigma_y' : 1.6/np.sqrt(150), 'b' : 1,
                       'd' : 1, 'gamma' : 1})
 

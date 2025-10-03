@@ -7,6 +7,7 @@ Created on Thu Sep 12 18:10:06 2024
 
 # %%
 import numpy as np
+from typing import Literal
 
 # %%
 
@@ -14,8 +15,17 @@ class ParametersInterface:
     
     # Public methods
             
-    def growth_consumption_rates(self, method, mu_c, sigma_c, mu_g, sigma_g,
-                                 conserve_mass = False, **kwargs):
+    def growth_consumption_rates(self,
+                                 method : Literal['coupled by rho',
+                                                  'growth function of consumption',
+                                                  'consumption function of growth',
+                                                  'user supplied'],
+                                 mu_c : float,
+                                 sigma_c : float,
+                                 mu_g : float,
+                                 sigma_g : float,
+                                 conserve_mass : bool = False,
+                                 **kwargs : any):
         
         '''
         
@@ -133,8 +143,11 @@ class ParametersInterface:
                               '"consumption function of growth", or ' + \
                                   '"user supplied".')
     
-    def other_parameter_methods(self, parameter_method, parameter_args,
-                                  p_label, dims):
+    def other_parameter_methods(self,
+                                parameter_method : str,
+                                parameter_args : dict,
+                                p_label : str,
+                                dims : tuple):
         
         '''
         

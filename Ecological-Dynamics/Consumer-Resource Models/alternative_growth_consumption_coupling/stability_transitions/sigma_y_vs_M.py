@@ -73,7 +73,7 @@ resource_pool_sizes = np.arange(50, 275, 25)
 
 # %%
 
-M_effect_sigma_y(resource_pool_sizes, np.array([0.05, 0.25]), 160, 1.6, 9,
+M_effect_sigma_y(resource_pool_sizes, (0.05, 0.25), 160, 1.6, 9,
                  {'mu_y' : 1, 'b' : 1, 'd' : 1, 'gamma' : 1})
 
 # %%

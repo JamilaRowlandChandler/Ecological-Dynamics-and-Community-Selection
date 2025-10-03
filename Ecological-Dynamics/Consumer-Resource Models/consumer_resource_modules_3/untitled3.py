@@ -36,14 +36,13 @@ community.calculate_community_properties()
 M = 75
 S = M
 
-community = Consumer_Resource_Model("Self-limiting resource supply, self-inhibition",
+community = Consumer_Resource_Model("Self-limiting resource supply",
                                     S, M)
 
 community.growth_consumption_rates('growth function of consumption',
                                    250/M, 1.6/np.sqrt(M), 1, 0.131)
 community.model_specific_rates('constant', {'d' : 1},
-                               'constant', {'b' : 1},
-                               'constant', {'si' : 10**(-1)})
+                               'constant', {'b' : 1})
 
 community.simulate_community(5000, 1)
 

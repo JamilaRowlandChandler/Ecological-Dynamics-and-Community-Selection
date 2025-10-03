@@ -6,19 +6,26 @@ Created on Sat Sep 14 10:24:02 2024
 """
 
 import numpy as np
-from scipy.signal import find_peaks
-from scipy.signal import peak_prominences
+import numpy.typing as npt
+from typing import TYPE_CHECKING, Union
+#from scipy.signal import find_peaks
+#from scipy.signal import peak_prominences
 from copy import deepcopy
 
-from matplotlib import pyplot as plt
+########## type checking ########
+
+
+if TYPE_CHECKING:
+    
+    from models import SL_CRM, SL_SI_CRM
 
 ########### Community properties #############
 
 class CommunityPropertiesInterface:
     
     def calculate_community_properties(self,
-                                       average_property = False,
-                                       time_window = 500):
+                                       average_property : bool = False,
+                                       time_window : float = 500):
         '''
         
         Call methods that calculate the moments of the species and resource
@@ -88,7 +95,9 @@ class CommunityPropertiesInterface:
         self.resource_abundance_fluctuations = [dist[2] 
                                                for dist in resource_distributions]
             
-    def __abundance_distribution(self, abundances, extinct_thresh = 1e-4):
+    def __abundance_distribution(self,
+                                 abundances : npt.NDArray,
+                                 extinct_thresh : float = 1e-4):
         
         '''
         
@@ -136,12 +145,15 @@ class CommunityPropertiesInterface:
     
 ###########################################################################################################
 
-def max_le(community, T, initial_conditions, extinction_threshold,
-           separation = 1e-9, dt = 1):
+def max_le(community : Union["SL_CRM", "SL_SI_CRM"],
+           T : float,
+           initial_conditions : npt.NDArray,
+           separation : float = 1e-9,
+           dt : float = 1):
     
     '''
     
-    Calculate the average maximum lyapunov exponent for a lineage.
+    Calculate the average maximum lyapunov exponent for a community.
     See Sprott (1997, revised 2015) 'Numerical Calculation of Largest Lyapunov Exponent' 
     for more details.
     
@@ -152,7 +164,7 @@ def max_le(community, T, initial_conditions, extinction_threshold,
             Simulate community dynamics for time = dt.
         (4) Measure the new degree of separation between the original trajectory and the
             perturbated trajectory. This is d1:
-                d1 = [(S_1-S_(1,perturbated))^2+(S_2-S_(2,perturbated))^2+...]^(1/2)
+                d1 = [(N_1 - N_(1,perturbated))^2 + (N_2 - N_(2,perturbated))^2 + ...]
         (5) Estimate the max. lyapunov exponent = (1/dt)*ln(|d1/separation|).
         (6) Reset the perturbated trajectories species abundaces so that the 
             original and perturbated trajectory are 'separation' apart:
@@ -161,26 +173,24 @@ def max_le(community, T, initial_conditions, extinction_threshold,
     
     Parameters
     ----------
-    dict_key : string
-        Lineage.
-     n : int
-         The number of iterations the lyapunov exponent is calculated over. The default is 10.
-     dt : float, optional
-         The timestep the lyapunov exponents is calculated over. The default is 7000.
-     separation : float
-         The amount a community is perturbated. The default is 1e-2.
-     extinct_thresh : float
-         Species extinction threshold. The default is 1e-4.
+    community : object of the Consumer_Resource_Model class
+        community, for which the max. le is being calculated
+    T : float
+        the max. time the max. lyapunov exponent is calculated over
+        No. iteractions = T/dt
+    initial_conditions : np.ndarray
+        the initial abundances/community composition to start calculating the max. le from
+    separation : float
+        the amount a community is perturbated. The default is 1e-9.
+    dt : float, optional
     
     Returns
     -------
     max_lyapunov_exponent : float
-        The average maximum lyapunov exponent.
+        The average maximum lyapunov exponent calculate over T.
     
     '''
     
-    #breakpoint()
-   
     # Initialise list of max. lyapunov exponents
     log_d1d0 = []
     
@@ -194,6 +204,7 @@ def max_le(community, T, initial_conditions, extinction_threshold,
     
     current_time = 0
     
+    # set max. and min. amounts trajectories can separate before the function stops
     separation_dt = separation
     separation_min = 1e-3 * separation
     separation_max = 1e3 * separation
