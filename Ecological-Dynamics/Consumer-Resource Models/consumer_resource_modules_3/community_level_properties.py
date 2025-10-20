@@ -8,9 +8,8 @@ Created on Sat Sep 14 10:24:02 2024
 import numpy as np
 import numpy.typing as npt
 from typing import TYPE_CHECKING, Union
-#from scipy.signal import find_peaks
-#from scipy.signal import peak_prominences
 from copy import deepcopy
+from matplotlib import pyplot as plt
 
 ########## type checking ########
 
@@ -145,11 +144,83 @@ class CommunityPropertiesInterface:
     
 ###########################################################################################################
 
+# %%
+
 def max_le(community : Union["SL_CRM", "SL_SI_CRM"],
-           T : float,
            initial_conditions : npt.NDArray,
-           separation : float = 1e-9,
-           dt : float = 1):
+           T : float = 100,
+           perturbation : float = 1e-8):
+    
+    def trajectory(initial_conditions):
+    
+    # Set initial conditions of the original and perturbated trajectory
+        original_conditions = deepcopy(initial_conditions)
+        
+        perturbed_conditions = deepcopy(initial_conditions)
+        perturbed_conditions += perturbation * np.ones(len(perturbed_conditions)) #np.random.uniform(-1, 1, len(perturbed_conditions))
+        
+        # Simulate the original community trajectory for time = T
+        original_traj = community.simulate_community(T, 1, init_cond_func='user supplied',
+                                                     assign = False,
+                                                     user_supplied_init_cond = 
+                                                     {'species' : original_conditions[:community.no_species],
+                                                      'resources' : original_conditions[community.no_species:]})
+        # Simulate the perturbated community trajectory for time = T
+        perturbed_traj = community.simulate_community(T, 1, init_cond_func='user supplied',
+                                                      assign = False,
+                                                      user_supplied_init_cond = 
+                                                      {'species' : perturbed_conditions[:community.no_species],
+                                                       'resources' : perturbed_conditions[community.no_species:]})
+        
+        return original_traj, perturbed_traj
+    
+    original_traj, perturbed_traj = trajectory(initial_conditions)
+    
+    if original_traj[0].y.shape[1] != perturbed_traj[0].y.shape[1]:
+        
+        trajectories = [original_traj, perturbed_traj]
+        
+        long_idx = [traj[0].y.shape[1] for traj in trajectories].argmax()
+        shortest_traj_length = np.min([traj[0].y.shape[1] for traj in trajectories])
+        
+        trajectories[long_idx][0].t = trajectories[long_idx][0].t[:shortest_traj_length]
+        trajectories[long_idx][0].y = trajectories[long_idx][0].y[: , :shortest_traj_length]
+        
+        original_traj, perturbed_traj = trajectories
+        
+    # Calculated the new separation between the original and perturbated trajectory (d1)
+    separation = np.log(np.linalg.norm(perturbed_traj[0].y - original_traj[0].y,
+                                       axis=0))
+   
+    separation_grad_abs = np.abs(np.gradient(separation, perturbed_traj[0].t))
+    
+    if np.all(np.convolve(separation_grad_abs,
+                          np.ones(40)/40,
+                          mode='valid') > 0.001) == False:
+        
+        final_idx = -1
+    
+    else: 
+        
+        cutoff_t = np.convolve(perturbed_traj[0].t,
+                               np.ones(40)/40,
+                               mode='valid')[np.convolve(separation_grad_abs,
+                                                         np.ones(40)/40,
+                                                         mode='valid') > 0.001][-1]
+                                        
+        final_idx = np.abs(perturbed_traj[0].t - cutoff_t).argmin()
+                                                     
+    max_lyapunov_exponent, log_offset = np.polyfit(perturbed_traj[0].t[10 : final_idx],
+                                                   separation[10 : final_idx],
+                                                   1)
+    return max_lyapunov_exponent
+
+
+def max_le_2(community : Union["SL_CRM", "SL_SI_CRM"],
+             T : float,
+             initial_conditions : npt.NDArray,
+             separation : float = 1e-9,
+             dt : float = 1):
     
     '''
     

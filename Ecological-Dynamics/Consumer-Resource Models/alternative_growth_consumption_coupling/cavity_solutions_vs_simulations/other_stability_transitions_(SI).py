@@ -23,11 +23,15 @@ from simulation_functions import generic_heatmaps_multi
 
 # %%
 
-solved_sces_mu_y = pd.read_pickle("self_consistency_equations/M_vs_mu_y.pkl")
-solved_sces_mu_d = pd.read_pickle("self_consistency_equations/M_vs_mu_d.pkl")
-solved_sces_sigma_d = pd.read_pickle("self_consistency_equations/M_vs_sigma_d.pkl")
-solved_sces_mu_b = pd.read_pickle("self_consistency_equations/M_vs_mu_b.pkl")
-solved_sces_sigma_b  = pd.read_pickle("self_consistency_equations/M_vs_sigma_b.pkl")
+directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                              + "resource_diversity_stability/self_consistency_equations/" 
+            # "self_consistency_equations"
+            
+solved_sces_mu_y = pd.read_pickle(directory + "M_vs_mu_y.pkl")
+solved_sces_mu_d = pd.read_pickle(directory + "M_vs_mu_d.pkl")
+solved_sces_sigma_d = pd.read_pickle(directory + "M_vs_sigma_d.pkl")
+solved_sces_mu_b = pd.read_pickle(directory + "M_vs_mu_b.pkl")
+solved_sces_sigma_b  = pd.read_pickle(directory + "M_vs_sigma_b.pkl")
 
 # %%
 

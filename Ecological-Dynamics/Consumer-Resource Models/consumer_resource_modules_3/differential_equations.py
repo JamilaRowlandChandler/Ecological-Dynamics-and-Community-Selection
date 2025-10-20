@@ -108,7 +108,7 @@ def unbounded_growth(t, var, *args):
     
     # if any species or resource abundances are greater than some threshold
     # or if any species abundances are less than or equal to 0  
-    if np.any(np.log(np.abs(var)) > 4) or np.isnan(np.log(np.abs(var))).any():
+    if np.any(np.log(np.abs(var) + 1e-20) > 4) or np.isnan(np.log(np.abs(var) + 1e-20)).any():
         
         return 0 # when the returned value of an event function is 0, the ode 
                     #solver terminates.

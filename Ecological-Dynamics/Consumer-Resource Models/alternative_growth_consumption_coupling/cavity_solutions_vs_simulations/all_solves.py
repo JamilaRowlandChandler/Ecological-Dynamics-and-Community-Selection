@@ -177,10 +177,15 @@ def Global_Solve_SCEs(varying_parameter : str,
             return final_sces
         
     # create directory to save data 
+    
+    directory  = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" + \
+                    "resource_diversity_stability/self_consistency_equations"
+                    
+    #directory = "self_consistency_equations"
         
-    if not os.path.exists("self_consistency_equations"): 
+    if not os.path.exists(directory): 
         
-        os.makedirs("self_consistency_equations") 
+        os.makedirs(directory) 
         
     variable_parameters = np.unique(sce.parameter_combinations([resource_pool_sizes,
                                                                 p_range],
@@ -213,7 +218,7 @@ def Global_Solve_SCEs(varying_parameter : str,
 
     # save data
     
-    pickle_dump("self_consistency_equations/" + filename + ".pkl", final_sces)
+    pickle_dump(directory + filename + ".pkl", final_sces)
     
     return solved_sces
 
@@ -221,9 +226,9 @@ def Global_Solve_SCEs(varying_parameter : str,
 
 def Solve_Stability_Boundary(solved_sces : any,
                              varying_parameter : str,
-                             quantity_bounds : list[float, float],
                              interpolation_protocol : Literal['A', 'B'],
-                             filename : str):
+                             filename : str,
+                             parameter_bounds : Union[None, list[float, float]] = None):
     
     '''
     
@@ -246,9 +251,16 @@ def Solve_Stability_Boundary(solved_sces : any,
 
     '''
     
-    if not os.path.exists("self_consistency_equations"): 
+    #if not os.path.exists("self_consistency_equations"): 
         
-        os.makedirs("self_consistency_equations") 
+    #    os.makedirs("self_consistency_equations") 
+    
+    directory = "C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                           + "resource_diversity_stability/self_consistency_equations/stability_bound"
+                           
+    if not os.path.exists(directory): 
+        
+        os.makedirs(directory)                      
         
     parm_names = ['mu_c', 'sigma_c', 'mu_y', 'sigma_y',
                   'mu_b', 'sigma_b', 'mu_d', 'sigma_d',
@@ -304,7 +316,7 @@ def Solve_Stability_Boundary(solved_sces : any,
                                                                   col],
                                                   1))
                              for col in parm_names + solved_quantities]
-    
+            
     interpolated_data = pd.DataFrame([np.round(interpolator(interpolated_M), 7)
                                       for interpolator in interpolators],
                                      index = parm_names + solved_quantities).T
@@ -329,18 +341,28 @@ def Solve_Stability_Boundary(solved_sces : any,
     x_inits = [list(x_init.values()) for x_init in x_init_dicts]
     
     # constrained model bounds (so the solver doesn't wander off)
-    bounds = [([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10, 1e-10, 1e-10,
-                0.85 * x_is[varying_parameter]], 
-               [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15,
-                1.15 * x_is[varying_parameter]])
-              for x_is in x_init_dicts]
+    
+    if isinstance(parameter_bounds, list):
+        
+        bounds = ([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10, 1e-10, 1e-10,
+                   parameter_bounds[0]], 
+                  [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15,
+                   parameter_bounds[1]])
+    
+    else:
+        
+        bounds = [([1e-10, 1e-10, 1e-10, -1e15, 1e-10, 1e-10, 1e-10, 1e-10,
+                    0.85 * x_is[varying_parameter]], 
+                   [1, 1e15, 1e15, 1e-10, 1, 1e15, 1e15, 1e15,
+                    1.15 * x_is[varying_parameter]])
+                  for x_is in x_init_dicts]
     
 
     # solve for the stability boundary
     solved_boundary = solve_sces(parameters, solved_quantities, bounds, x_inits,
                                  'least-squares', include_multistability = True)
     
-    pickle_dump("self_consistency_equations/" + filename + "_stable_bound.pkl",
+    pickle_dump(directory + "/" + filename + ".pkl",
                 solved_boundary)
     
     return solved_boundary
@@ -362,41 +384,75 @@ def pop_key(dictionary, key):
 # globally solved self consistency equations
 sces_mu_c = Global_Solve_SCEs("mu_c", (100, 250), 11, "M_vs_mu_c")
 
-# locally solve the stability boundary
-stability_boundary_mu_c = Solve_Stability_Boundary(sces_mu_c,
-                                                   "mu_c",
-                                                   [80, 260],
-                                                   'A',
-                                                   "M_vs_mu_c")
-
 # %%
 
 ##################### Solve for sigma_c vs M (fig. 4) #########################
 
 sces_sigma_c = Global_Solve_SCEs('sigma_c', (0.5, 2.5), 11, "M_vs_sigma_c")
 
-# locally solve the stability boundary
-stability_boundary_sigma_c = Solve_Stability_Boundary(sces_sigma_c,
-                                                      'sigma_c',
-                                                      [0.1, 10],
-                                                      'B',
-                                                      "M_vs_sigma_c")
-
+# %%
 
 ##################### Solve for sigma_y vs M (fig. 4) #########################
 
 sces_sigma_y = Global_Solve_SCEs('sigma_y', (0.05, 0.25), 9, "M_vs_sigma_y")
 
+# %%
+
+################### Load in data and solve for the stability condition #############
+
+# mu_c 
+
+sces_mu_c = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                           + "resource_diversity_stability/self_consistency_equations/" + \
+                               "M_vs_mu_c.pkl")
+
+# locally solve the stability boundary
+stability_boundary_mu_c = Solve_Stability_Boundary(sces_mu_c,
+                                                   "mu_c",
+                                                   'A',
+                                                   "M_vs_mu_c",
+                                                   parameter_bounds = [80, 260])
+
+# %%
+
+# sigma_c
+
+sces_sigma_c = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                              + "resource_diversity_stability/self_consistency_equations/" + \
+                                  "M_vs_sigma_c.pkl")
+
+# locally solve the stability boundary
+stability_boundary_sigma_c = Solve_Stability_Boundary(sces_sigma_c,
+                                                      'sigma_c',
+                                                      'B',
+                                                      "M_vs_sigma_c",
+                                                      parameter_bounds = [0.1, 10])
+
+# sigma_y
+
+sces_sigma_y = pd.read_pickle("C:/Users/jamil/Documents/PhD/Data files and figures/Ecological-Dynamics-and-Community-Selection/Ecological Dynamics/Data/" \
+                                      + "resource_diversity_stability/self_consistency_equations/" + \
+                                          "M_sigma_y.pkl") 
+
 # locally solve the stability boundary
 stability_boundary_sigma_y = Solve_Stability_Boundary(sces_sigma_y,
                                                       'sigma_y',
-                                                      [0.001, 0.5],
                                                       'B',
-                                                      "M_vs_sigma_y")
+                                                      "M_vs_sigma_y",
+                                                      parameter_bounds = [0.001, 0.5])
 
 # %%
 
 ##################### Solve for other parameters (in SI) #########################
+
+# mean yield conversion factor 
+
+sces_mu_y = Global_Solve_SCEs('mu_y', (0.25, 1), 7, "M_vs_mu_y",
+                              fixed_parameters = dict(mu_c = 130, sigma_c = 1.6,
+                                                      mu_y = 1, sigma_y = 0.130639,
+                                                      mu_d = 1, sigma_d =  0,
+                                                      mu_b = 1, sigma_b = 0, 
+                                                      gamma = 1))
 
 # death rates
 

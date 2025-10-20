@@ -122,9 +122,11 @@ class ParametersInterface:
                 
             case 'user supplied':
                 
-                consumption, growth = kwargs.get('consumption', None), kwargs.get('growth', None)
+                consumption, growth = kwargs.get('consumption',
+                                                 np.array([])), kwargs.get('growth',
+                                                                           np.array([]))
                 
-                if not consumption or not growth:
+                if not consumption.any() or not growth.any():
                         
                     raise Exception('Please supply your growth or consumption rates.\n'
                                     '(In growth_consumption_method(), add the arguments ' 

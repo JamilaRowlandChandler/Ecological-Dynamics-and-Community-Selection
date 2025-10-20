@@ -236,7 +236,7 @@ class SL_CRM(ParametersInterface, DifferentialEquationsInterface, CommunityPrope
             # change in resource abundances over time
             dRdt = (resources * (B - resources)) - \
                 (resources * np.sum(C * species, axis=1))
-
+                
             return np.concatenate((dNdt, dRdt)) + 1e-8
         
         unbounded_growth.terminal = True
